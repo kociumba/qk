@@ -66,17 +66,17 @@ if (QK_NEEDS_REFLECTION)
     set(FETCHCONTENT_QUIET NO)
     FetchContent_MakeAvailable(reflect_src)
 
-    FetchContent_Declare(
-            mp_src
-            DOWNLOAD_EXTRACT_TIMESTAMP OFF
-            GIT_REPOSITORY https://github.com/qlibs/mp
-            GIT_TAG v2.0.11
-            SYSTEM)
-    set(FETCHCONTENT_QUIET NO)
-    FetchContent_MakeAvailable(mp_src)
+    #    FetchContent_Declare(
+    #            mp_src
+    #            DOWNLOAD_EXTRACT_TIMESTAMP OFF
+    #            GIT_REPOSITORY https://github.com/qlibs/mp
+    #            GIT_TAG v2.0.11
+    #            SYSTEM)
+    #    set(FETCHCONTENT_QUIET NO)
+    #    FetchContent_MakeAvailable(mp_src)
 
-    target_sources(qk PUBLIC ${reflect_src_SOURCE_DIR}/reflect ${mp_src_SOURCE_DIR}/mp)
-    target_include_directories(qk PUBLIC ${reflect_src_SOURCE_DIR} ${mp_src_SOURCE_DIR})
+    target_sources(qk PUBLIC ${reflect_src_SOURCE_DIR}/reflect #[=[ ${mp_src_SOURCE_DIR}/mp ]=])
+    target_include_directories(qk PUBLIC ${reflect_src_SOURCE_DIR} #[=[ ${mp_src_SOURCE_DIR} ]=])
 endif ()
 
 if (QK_ENABLE_IPC)

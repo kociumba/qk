@@ -17,7 +17,7 @@ namespace qk::events {
 //     return sub.id;
 // }
 
-void unsubscribe(int id, EventBus* bus) {
+QK_API void unsubscribe(int id, EventBus* bus) {
     std::lock_guard l(bus->mu);
 
     for (const auto& [event, subs] : bus->subscribers) {
@@ -30,7 +30,7 @@ void unsubscribe(int id, EventBus* bus) {
     }
 }
 
-void unsubscribe_all(EventBus* bus) {
+QK_API void unsubscribe_all(EventBus* bus) {
     std::lock_guard l(bus->mu);
 
     bus->subscribers.clear();

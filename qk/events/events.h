@@ -33,7 +33,7 @@ struct QK_API EventBus {
 };
 
 template <typename Event>
-int subscribe(event_cb callback, EventBus* bus) {
+QK_API int subscribe(event_cb callback, EventBus* bus) {
     std::lock_guard l(bus->mu);
 
     Subscriber sub{};
@@ -49,11 +49,11 @@ int subscribe(event_cb callback, EventBus* bus) {
 
 // int subscribe(event_cb callback, reflect::detail::any event_type, EventBus* bus);
 
-void unsubscribe(int id, EventBus* bus);
-void unsubscribe_all(EventBus* bus);
+QK_API void unsubscribe(int id, EventBus* bus);
+QK_API void unsubscribe_all(EventBus* bus);
 
 template <typename Event>
-void remove_event(EventBus* bus) {
+QK_API void remove_event(EventBus* bus) {
     std::lock_guard l(bus->mu);
     bus->subscribers.erase(reflect::type_id<Event>());
 }
@@ -61,7 +61,7 @@ void remove_event(EventBus* bus) {
 // void remove_event(reflect::detail::any event_type, EventBus* bus);
 
 template <typename Event>
-void publish(Event event, EventBus* bus) {
+QK_API void publish(Event event, EventBus* bus) {
     std::lock_guard l(bus->mu);
 
     for (const auto& sub : bus->subscribers[reflect::type_id(event)]) {
