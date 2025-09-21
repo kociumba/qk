@@ -1,0 +1,109 @@
+cmake_minimum_required(VERSION 3.28.3..3.31)
+project(qk LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 26)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+include(CMakeDependentOption)
+
+option(QK_SHARED_LIB "builds qk as a shard lib instead of a static lib" OFF)
+option(QK_USE_EXCEPT "builds qk with c++ exceptions turned on" OFF)
+option(QK_ENABLE_IPC "includes qk ipc in the built lib" ON)
+option(QK_ENABLE_FILEPATH "includes qk filepath in the built lib" ON)
+option(QK_ENABLE_EVENTS "include the qk event bus in the built lib" ON)
+
+cmake_dependent_option(QK_NEEDS_REFLECTION "defines if qk needs reflection to work based on the enabled features"
+        ON
+        "QK_ENABLE_EVENTS"
+        OFF)
+
+set(QK_SOURCES
+        qk/ipc/ipc.cpp
+        qk/ipc/ipc.h
+        qk/api.h
+        qk/filepath/filepath.cpp
+        qk/filepath/filepath.h
+        qk/events/events.cpp
+        qk/events/events.h
+)
+
+if (QK_SHARED_LIB OR BUILD_SHARED_LIBS)
+    add_library(qk SHARED ${QK_SOURCES})
+    target_compile_definitions(qk
+            PRIVATE QK_EXPORTS
+            PUBLIC QK_BUILD_SHARED
+    )
+else ()
+    add_library(qk STATIC ${QK_SOURCES})
+endif ()
+
+target_include_directories(qk INTERFACE include)
+
+if (NOT QK_USE_EXCEPT)
+    if (MSVC)
+        target_compile_options(qk PRIVATE /EHsc)
+    else ()
+        target_compile_options(qk PRIVATE -fno-exceptions)
+    endif ()
+endif ()
+
+if (MSVC)
+    target_compile_options(qk PRIVATE /W4 /WX)
+else ()
+    target_compile_options(qk PRIVATE -Wall)
+endif ()
+
+if (QK_NEEDS_REFLECTION)
+    include(FetchContent)
+    # no check for existence here since the download is just 3 files
+    FetchContent_Declare(
+            reflect_src
+            DOWNLOAD_EXTRACT_TIMESTAMP OFF
+            GIT_REPOSITORY https://github.com/qlibs/reflect
+            GIT_TAG v1.2.6
+            SYSTEM)
+    set(FETCHCONTENT_QUIET NO)
+    FetchContent_MakeAvailable(reflect_src)
+
+    FetchContent_Declare(
+            mp_src
+            DOWNLOAD_EXTRACT_TIMESTAMP OFF
+            GIT_REPOSITORY https://github.com/qlibs/mp
+            GIT_TAG v2.0.11
+            SYSTEM)
+    set(FETCHCONTENT_QUIET NO)
+    FetchContent_MakeAvailable(mp_src)
+
+    target_sources(qk PUBLIC ${reflect_src_SOURCE_DIR}/reflect ${mp_src_SOURCE_DIR}/mp)
+    target_include_directories(qk PUBLIC ${reflect_src_SOURCE_DIR} ${mp_src_SOURCE_DIR})
+endif ()
+
+if (QK_ENABLE_IPC)
+    find_package(nng QUIET)
+    if (NOT nng_FOUND)
+        include(FetchContent)
+        FetchContent_Declare(
+                nng
+                DOWNLOAD_EXTRACT_TIMESTAMP OFF
+                GIT_REPOSITORY https://github.com/nanomsg/nng
+                GIT_TAG v1.11
+                SYSTEM)
+        FetchContent_GetProperties(nng)
+        if (NOT nng_POPULATED)
+            set(FETCHCONTENT_QUIET NO)
+            FetchContent_MakeAvailable(nng)
+        endif ()
+    endif ()
+
+    target_link_libraries(qk PUBLIC nng)
+    target_compile_definitions(qk PRIVATE QK_IPC)
+endif ()
+
+if (QK_ENABLE_FILEPATH)
+    target_compile_definitions(qk PRIVATE QK_FILEPATH)
+endif ()
+
+if (QK_ENABLE_EVENTS)
+    target_compile_definitions(qk PRIVATE QK_EVENTS)
+endif ()
