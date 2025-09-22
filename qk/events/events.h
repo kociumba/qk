@@ -5,6 +5,7 @@
 
 #include <atomic>
 // #include <mp>
+#include <functional>
 #include <mutex>
 #include <ranges>
 #include <reflect>
@@ -18,7 +19,7 @@
 // look in to that later
 namespace qk::events {
 
-using event_cb = void (*)(void* event);
+using event_cb = std::function<void(void*)>;
 
 struct QK_API Subscriber {
     event_cb cb;
@@ -39,10 +40,8 @@ QK_API int subscribe(event_cb callback, EventBus* bus) {
     Subscriber sub{};
     sub.cb = callback;
 
-    if (!bus->subscribers.contains(reflect::type_id<Event>())) {
-        sub.id = ++bus->id_counter;
-        bus->subscribers[reflect::type_id<Event>()].emplace_back(sub);
-    }
+    sub.id = ++bus->id_counter;
+    bus->subscribers[reflect::type_id<Event>()].emplace_back(sub);
 
     return sub.id;
 }
@@ -65,7 +64,7 @@ QK_API void publish(Event event, EventBus* bus) {
     std::lock_guard l(bus->mu);
 
     for (const auto& sub : bus->subscribers[reflect::type_id(event)]) {
-        sub.cb(event);
+        sub.cb(&event);
     }
 }
 

@@ -8,15 +8,24 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(CMakeDependentOption)
 
 option(QK_SHARED_LIB "builds qk as a shard lib instead of a static lib" OFF)
+option(QK_BUILD_TESTS "builds the tests for qk" ON)
+
 option(QK_USE_EXCEPT "builds qk with c++ exceptions turned on" OFF)
 option(QK_ENABLE_IPC "includes qk ipc in the built lib" ON)
 option(QK_ENABLE_FILEPATH "includes qk filepath in the built lib" ON)
 option(QK_ENABLE_EVENTS "include the qk event bus in the built lib" ON)
+option(QK_ENABLE_THREADING "include the qk gorutine implementation in the built lib" ON)
 
 cmake_dependent_option(QK_NEEDS_REFLECTION "defines if qk needs reflection to work based on the enabled features"
         ON
         "QK_ENABLE_EVENTS"
         OFF)
+
+function(qk_add_test_source path_to_source)
+    if (QK_BUILD_TESTS)
+        target_sources(tests PUBLIC ${path_to_source})
+    endif ()
+endfunction()
 
 set(QK_SOURCES
         qk/ipc/ipc.cpp
@@ -26,6 +35,9 @@ set(QK_SOURCES
         qk/filepath/filepath.h
         qk/events/events.cpp
         qk/events/events.h
+        qk/threading/gorutines.cpp
+        qk/threading/gorutines.cpp
+        qk/threading/gorutines.h
 )
 
 if (QK_SHARED_LIB OR BUILD_SHARED_LIBS)
@@ -54,6 +66,32 @@ else ()
     target_compile_options(qk PRIVATE -Wall)
 endif ()
 
+if (QK_BUILD_TESTS)
+    find_package(Catch2 QUIET)
+    if (NOT Catch2_FOUND)
+        include(FetchContent)
+        FetchContent_Declare(
+                Catch2
+                GIT_REPOSITORY https://github.com/catchorg/Catch2
+                GIT_TAG v3.10.0
+                SYSTEM
+        )
+        FetchContent_GetProperties(Catch2)
+        if (NOT Catch2_POPULATED)
+            set(FETCHCONTENT_QUIET NO)
+            FetchContent_MakeAvailable(Catch2)
+        endif ()
+    endif ()
+
+    add_executable(tests)
+    target_link_libraries(tests PRIVATE Catch2::Catch2WithMain qk)
+
+    list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
+    include(CTest)
+    include(Catch)
+    catch_discover_tests(tests)
+endif ()
+
 if (QK_NEEDS_REFLECTION)
     include(FetchContent)
     # no check for existence here since the download is just 3 files
@@ -80,6 +118,7 @@ if (QK_NEEDS_REFLECTION)
 endif ()
 
 if (QK_ENABLE_IPC)
+    set(NNG_TESTS OFF)
     find_package(nng QUIET)
     if (NOT nng_FOUND)
         include(FetchContent)
@@ -97,13 +136,21 @@ if (QK_ENABLE_IPC)
     endif ()
 
     target_link_libraries(qk PUBLIC nng)
-    target_compile_definitions(qk PRIVATE QK_IPC)
+    target_compile_definitions(qk PUBLIC QK_IPC)
+    qk_add_test_source(tests/ipc_test.cpp)
 endif ()
 
 if (QK_ENABLE_FILEPATH)
-    target_compile_definitions(qk PRIVATE QK_FILEPATH)
+    target_compile_definitions(qk PUBLIC QK_FILEPATH)
+    qk_add_test_source(tests/filepath_test.cpp)
 endif ()
 
 if (QK_ENABLE_EVENTS)
-    target_compile_definitions(qk PRIVATE QK_EVENTS)
+    target_compile_definitions(qk PUBLIC QK_EVENTS)
+    qk_add_test_source(tests/events_test.cpp)
+endif ()
+
+if (QK_ENABLE_THREADING)
+    target_compile_definitions(qk PUBLIC QK_THREADING)
+    qk_add_test_source(tests/threading_test.cpp)
 endif ()

@@ -9,6 +9,7 @@
 #include <nng/protocol/pair0/pair.h>
 #include <atomic>
 #include <format>
+#include <functional>
 #include <iostream>
 #include <mutex>
 #include <queue>
@@ -19,7 +20,8 @@
 
 namespace qk::ipc {
 
-using log_cb = void (*)(const std::string& kq_error_msg, const char* nng_error_string);
+using log_cb = std::function<void(const std::string& qk_error_msg, const char* nng_error_string)>;
+;
 
 inline void default_error_cb(const std::string& msg, const char* nng_err) {
     if (nng_err != nullptr) {
@@ -76,7 +78,7 @@ QK_API bool dequeue_received(std::string* out, IPC* ipc);
 //
 // the secondary argument of the callback may be NULL, and should not be expected to always be a
 // string
-QK_API inline void set_error_cb(const log_cb cb, IPC* ipc) {
+QK_API inline void set_error_cb(const log_cb& cb, IPC* ipc) {
     if (cb == nullptr)
         ipc->error_cb = default_error_cb;
     else
@@ -87,7 +89,7 @@ QK_API inline void set_error_cb(const log_cb cb, IPC* ipc) {
 //
 // the secondary argument of the callback may be NULL, and should not be expected to always be a
 // string
-QK_API inline void set_warn_cb(const log_cb cb, IPC* ipc) {
+QK_API inline void set_warn_cb(const log_cb& cb, IPC* ipc) {
     if (cb == nullptr)
         ipc->warn_cb = default_warn_cb;
     else

@@ -15,6 +15,55 @@ namespace qk::filepath {
 
 using std::string;
 
+struct lazybuf {
+    string path;
+    string buf;
+    int w;
+    string vol_and_path;
+    int vol_len;
+    bool using_buf;
+
+    lazybuf(const std::string& p, const std::string& vol_path, int vlen)
+        : path(p), buf(""), w(0), vol_and_path(vol_path), vol_len(vlen), using_buf(false) {}
+
+    char index(int i) { return using_buf ? buf[i] : path[i]; }
+
+    void append(char c) {
+        if (!using_buf) {
+            if (w < (int)path.length() && path[w] == c) {
+                w++;
+                return;
+            }
+            buf = path.substr(0, w);
+            using_buf = true;
+        }
+
+        if (w >= (int)buf.length()) {
+            buf.push_back(c);
+        } else {
+            buf[w] = c;
+        }
+        w++;
+    }
+
+    void prepend(const std::string& prefix) {
+        if (!using_buf) {
+            buf = path.substr(0, w);
+            using_buf = true;
+        }
+
+        buf = prefix + buf;
+        w += (int)prefix.length();
+    }
+
+    std::string string() {
+        if (!using_buf) {
+            return vol_and_path.substr(0, vol_len + w);
+        }
+        return vol_and_path.substr(0, vol_len) + buf.substr(0, w);
+    }
+};
+
 #ifdef _WIN32
 #define SEPARATOR '\\'
 
@@ -26,13 +75,13 @@ inline bool path_has_prefix_fold(const string& s, const string& prefix) {
 
     for (int i = 0; i < prefix.length(); i++) {
         if (is_path_sep(prefix[i])) {
-            if (is_path_sep(s[i])) return false;
+            if (!is_path_sep(s[i])) return false;
         } else if (std::toupper(s[i]) != std::toupper(prefix[i])) {
             return false;
         }
     }
 
-    if (s.length() > prefix.length() && is_path_sep(s[prefix.length()])) {
+    if (s.length() > prefix.length() && !is_path_sep(s[prefix.length()])) {
         return false;
     }
 
@@ -99,26 +148,24 @@ inline int volume_name_len(const string& path) {
     return 0;
 }
 
-inline void post_clean(std::stringstream& out, int vol_len) {
-    if (vol_len != 0) {
+inline void post_clean(lazybuf* out) {
+    if (out->vol_len != 0 || out->buf.empty()) {
         return;
     }
-    string buf = out.str();
 
-    for (char c : buf) {
+    for (char c : out->buf) {
         if (is_path_sep(c)) {
             break;
         }
         if (c == ':') {
-            out.str("");
-            out << '.' << SEPARATOR << buf;
+            out->prepend(string({'.', SEPARATOR}));
             return;
         }
     }
 
-    if (buf.length() >= 3 && is_path_sep(buf[0]) && buf[1] == '?' && buf[2] == '?') {
-        out.str("");
-        out << SEPARATOR << '.' << buf;
+    if (out->buf.length() >= 3 && is_path_sep(out->buf[0]) && out->buf[1] == '?' &&
+        out->buf[2] == '?') {
+        out->prepend(string({SEPARATOR, '.'}));
     }
 }
 #else
@@ -128,7 +175,7 @@ inline bool is_path_sep(const char& c) { return c == '/'; }
 
 inline int volume_name_len(const string& path) { return 0; }
 
-inline void post_clean(std::stringstream& out, int vol_len) {}
+inline void post_clean(lazybuf* out) {}
 #endif
 
 string clean(const string& path);

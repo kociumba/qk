@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include "../qk/api.h"
+#include "../../qk/api.h"
 
 #ifdef QK_IPC
 #include "qk_ipc.h"
@@ -13,6 +13,10 @@
 
 #ifdef QK_EVENTS
 #include "qk_events.h"
+#endif
+
+#ifdef QK_THREADING
+#include "qk_threading.h"
 #endif
 
 #endif  // COMMON_H

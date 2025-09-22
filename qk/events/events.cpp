@@ -1,5 +1,7 @@
 #include "events.h"
 
+#ifdef QK_EVENTS
+
 namespace qk::events {
 
 // int subscribe(event_cb callback, reflect::detail::any event_type, EventBus* bus) {
@@ -43,3 +45,5 @@ QK_API void unsubscribe_all(EventBus* bus) {
 // }
 
 }  // namespace qk::events
+
+#endif

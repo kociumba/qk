@@ -18,11 +18,11 @@ string clean(const string& path) {
 
     auto rooted = is_path_sep(path_c[0]);
     auto n = path_c.length();
-    std::stringstream out;
-    int r = 0, w = 0, dotdot = 0;
+    lazybuf out(path_c, original_path, vol_len);
+    int r = 0, dotdot = 0;
     if (rooted) {
-        out << SEPARATOR;
-        r = 1, w = 0, dotdot = 1;
+        out.append(SEPARATOR);
+        r = 1, dotdot = 1;
     }
 
     while (r < n) {
@@ -33,50 +33,41 @@ string clean(const string& path) {
         } else if (path_c[r] == '.' && path_c[r + 1] == '.' &&
                    (r + 2 == n || is_path_sep(path_c[r + 2]))) {
             r += 2;
-            if (w > dotdot) {
-                string current = out.str();
-                while (w > dotdot && !is_path_sep(current[w - 1])) {
-                    w--;
+            if (out.w > dotdot) {
+                out.w--;
+                while (out.w > dotdot && !is_path_sep(out.index(out.w))) {
+                    out.w--;
                 }
-                if (w > dotdot) {
-                    w--;
-                }
-                out.str("");
-                out << current.substr(0, w);
             } else if (!rooted) {
-                if (w > 0) {
-                    out << SEPARATOR;
-                    w++;
+                if (out.w > 0) {
+                    out.append(SEPARATOR);
                 }
-                out << "..";
-                w += 2;
-                dotdot = w;
+                out.append('.');
+                out.append('.');
+                dotdot = out.w;
             }
         } else {
-            if ((rooted && w != 1) || (!rooted && w != 0)) {
-                out << SEPARATOR;
-                w++;
+            if ((rooted && out.w != 1) || (!rooted && out.w != 0)) {
+                out.append(SEPARATOR);
             }
             for (; r < n && !is_path_sep(path_c[r]); r++) {
-                out << path_c[r];
-                w++;
+                out.append(path_c[r]);
             }
         }
     }
 
-    if (w == 0) {
-        out << '.';
-        w++;
+    if (out.w == 0) {
+        out.append('.');
     }
 
-    post_clean(out, vol_len);
-    return from_slash(out.str());
+    post_clean(&out);
+    return from_slash(out.string());
 }
 
 void split(const string& path, string* dir, string* file) {
     auto vol = volume_name(path);
     int i = (int)path.length() - 1;
-    while (i >= 0 && !is_path_sep(path[i])) {
+    while (i >= (int)vol.length() && !is_path_sep(path[i])) {
         i--;
     }
     *dir = path.substr(0, i + 1);
@@ -96,21 +87,21 @@ string base(const string& path) {
         return ".";
     }
 
-    while (!path_c.empty() && is_path_sep(path_c[path_c.length() - 1])) {
+    while (path_c.length() > 0 && is_path_sep(path_c[path_c.length() - 1])) {
         path_c = path_c.substr(0, path_c.length() - 1);
     }
 
     path_c = path_c.substr(volume_name_len(path));
     int i = (int)path_c.length() - 1;
     while (i >= 0 && !is_path_sep(path_c[i])) {
-        i++;
+        i--;
     }
     if (i >= 0) {
         path_c = path_c.substr(i + 1);
     }
 
-    if (path_c.empty()) {
-        return string(1, SEPARATOR);
+    if (path_c == "") {
+        return string({SEPARATOR});
     }
 
     return path_c;
@@ -118,12 +109,13 @@ string base(const string& path) {
 
 string dir(const string& path) {
     auto vol = volume_name(path);
+    int vol_len = volume_name_len(path);
     int i = (int)path.length() - 1;
-    while (i >= vol.length() && !is_path_sep(path[i])) {
+    while (i >= vol_len && !is_path_sep(path[i])) {
         i--;
     }
 
-    auto dir = clean(path.substr(vol.length(), i + 1));
+    auto dir = clean(path.substr(vol.length(), i + 1 - vol.length()));
     if (dir == "." && vol.length() > 2) {
         return vol;
     }

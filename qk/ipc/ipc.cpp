@@ -142,7 +142,7 @@ QK_API bool start(const std::string& endpoint, IPC* ipc, IPC::Proto protocol, Si
         nng_dialer_set_ms(dialer, NNG_OPT_RECONNMINT, ipc->opts.reconnect);
         nng_dialer_set_ms(dialer, NNG_OPT_RECONNMAXT, ipc->opts.timeout);
 
-        err = nng_dialer_start(dialer, NNG_FLAG_NONBLOCK);
+        err = nng_dialer_start(dialer /*, NNG_FLAG_NONBLOCK*/, NULL);
         if (err == 0) {
             ipc->dialers.push_back(dialer);
             ipc->peers.push_back(endpoint);
