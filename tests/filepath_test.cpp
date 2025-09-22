@@ -142,7 +142,7 @@ TEST_CASE("Filepath dir function", "[filepath]") {
         REQUIRE(dir(from_slash("path/")) == from_slash("path"));
 #ifdef _WIN32
         REQUIRE(dir("C:") == "C:.");
-        REQUIRE(dir("\\\\server\\share\\file") == "\\\\server\\share");
+        REQUIRE(dir("\\\\server\\share\\file") == "\\\\server\\share\\");
 #endif
     }
 }

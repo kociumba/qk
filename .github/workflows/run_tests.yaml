@@ -56,4 +56,4 @@ jobs:
 
             -   name: run tests
                 run: |
-                    ctest --test-dir cmake-build-debug
+                    ctest --test-dir cmake-build-debug --output-on-failure
