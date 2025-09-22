@@ -40,14 +40,15 @@ jobs:
                 run: |
                     winget install Kitware.CMake Ninja-build.Ninja
 
+            -   name: Set up MSVC (Windows) or no-op (non-Windows)
+                if: runner.os == 'Windows'
+                uses: TheMrMilchmann/setup-msvc-dev@v4
 
             -   name: config cmake
-                uses: TheMrMilchmann/setup-msvc-dev@v4
                 run: |
                     cmake -DCMAKE_BUILD_TYPE=Debug -G Ninja -B cmake-build-debug
 
             -   name: build
-                uses: TheMrMilchmann/setup-msvc-dev@v4
                 run: |
                     cmake --build cmake-build-debug
 
