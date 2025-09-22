@@ -38,9 +38,9 @@ jobs:
             -   name: set up (windows)
                 if: runner.os == 'Windows'
                 run: |
-                    winget install Kitware.CMake Ninja-build.Ninja
+                    winget install Kitware.CMake Ninja-build.Ninja --silent --accept-source-agreements --accept-package-agreements
 
-            -   name: Set up MSVC (Windows) or no-op (non-Windows)
+            -   name: set up msvc
                 if: runner.os == 'Windows'
                 uses: TheMrMilchmann/setup-msvc-dev@v4
 
