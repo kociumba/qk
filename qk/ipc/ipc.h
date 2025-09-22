@@ -3,7 +3,6 @@
 
 #ifdef QK_IPC
 
-#include <assert.h>
 #include <nng/nng.h>
 #include <nng/protocol/bus0/bus.h>
 #include <nng/protocol/pair0/pair.h>
