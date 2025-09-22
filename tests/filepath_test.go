@@ -53,10 +53,8 @@ func TestFilepathClean(t *testing.T) {
 			input    string
 			expected string
 		}{
-			{filepath.FromSlash("path\\to/file"), "path/to/file"},
+			{filepath.FromSlash("path\\to/file"), "path\\to/file"},
 			{"a/b/../../c", "c"},
-			{"C:foo/..", "C:."},
-			{"\\\\?\\C:\\foo\\..", "\\\\?\\C:\\"},
 		}
 		for _, tt := range tests {
 			t.Run(tt.input, func(t *testing.T) {
@@ -102,6 +100,8 @@ func TestFilepathClean(t *testing.T) {
 				{"C:\\path\\to\\..\\file", "C:\\path\\file"},
 				{"C:\\", "C:\\"},
 				{"\\\\server\\share\\path\\..\\file", "\\\\server\\share\\file"},
+				{"C:foo/..", "C:."},
+				{"\\\\?\\C:\\foo\\..", "\\\\?\\C:\\"},
 			}
 			for _, tt := range tests {
 				t.Run(tt.input, func(t *testing.T) {
@@ -151,8 +151,6 @@ func TestFilepathSplit(t *testing.T) {
 		}{
 			{"", "", ""},
 			{filepath.FromSlash("path/"), filepath.FromSlash("path/"), ""},
-			{"C:", "C:", ""},
-			{"\\\\server\\share", "\\\\server\\share", ""},
 		}
 		for _, tt := range tests {
 			t.Run(tt.input, func(t *testing.T) {
@@ -170,11 +168,22 @@ func TestFilepathSplit(t *testing.T) {
 
 	if runtime.GOOS == "windows" {
 		t.Run("Windows volume name", func(t *testing.T) {
-			dir, file := filepath.Split("C:\\path\\file.txt")
-			wantDir := "C:\\path\\"
-			wantFile := "file.txt"
-			if dir != wantDir || file != wantFile {
-				t.Errorf("Split(%q) = (%q, %q); want (%q, %q)", "C:\\path\\file.txt", dir, file, wantDir, wantFile)
+			tests := []struct {
+				input    string
+				wantDir  string
+				wantFile string
+			}{
+				{"C:\\path\\file.txt", "C:\\path\\", "file.txt"},
+				{"C:", "C:", ""},
+				{"\\\\server\\share", "\\\\server\\share", ""},
+			}
+			for _, tt := range tests {
+				t.Run(tt.input, func(t *testing.T) {
+					dir, file := filepath.Split(tt.input)
+					if dir != tt.wantDir || file != tt.wantFile {
+						t.Errorf("Split(%q) = (%q, %q); want (%q, %q)", tt.input, dir, file, tt.wantDir, tt.wantFile)
+					}
+				})
 			}
 		})
 	}
@@ -353,8 +362,6 @@ func TestFilepathDir(t *testing.T) {
 			expected string
 		}{
 			{"", "."},
-			{"C:", "C:."},
-			{"\\\\server\\share\\file", "\\\\server\\share\\"},
 			{filepath.FromSlash("path/"), "path"},
 		}
 		for _, tt := range tests {
@@ -372,6 +379,26 @@ func TestFilepathDir(t *testing.T) {
 			})
 		}
 	})
+
+	if runtime.GOOS == "windows" {
+		t.Run("Windows edge cases", func(t *testing.T) {
+			tests := []struct {
+				input    string
+				expected string
+			}{
+				{"C:", "C:."},
+				{"\\\\server\\share\\file", "\\\\server\\share\\"},
+			}
+			for _, tt := range tests {
+				t.Run(tt.input, func(t *testing.T) {
+					got := filepath.Dir(tt.input)
+					if got != tt.expected {
+						t.Errorf("Dir(%q) = %q; want %q", tt.input, got, tt.expected)
+					}
+				})
+			}
+		})
+	}
 }
 
 func TestFilepathSlashConversion(t *testing.T) {

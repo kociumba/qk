@@ -56,7 +56,7 @@ struct lazybuf {
         w += (int)prefix.length();
     }
 
-    std::string string() {
+    std::string _string() {
         if (!using_buf) {
             return vol_and_path.substr(0, vol_len + w);
         }

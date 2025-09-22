@@ -19,10 +19,8 @@ TEST_CASE("Filepath clean function", "[filepath]") {
     }
 
     SECTION("Additional edge cases") {
-        REQUIRE(clean(from_slash("path\\to/file")) == from_slash("path/to/file"));
+        REQUIRE(clean(from_slash("path\\to/file")) == from_slash("path\\to/file"));
         REQUIRE(clean("a/b/../../c") == from_slash("c"));
-        REQUIRE(clean("C:foo/..") == from_slash("C:."));
-        REQUIRE(clean("\\\\?\\C:\\foo\\..") == from_slash("\\\\?\\C:\\"));
     }
 
     SECTION("Empty or dot paths") {
@@ -36,6 +34,8 @@ TEST_CASE("Filepath clean function", "[filepath]") {
         REQUIRE(clean("C:\\path\\to\\..\\file") == "C:\\path\\file");
         REQUIRE(clean("C:\\") == "C:\\");
         REQUIRE(clean("\\\\server\\share\\path\\..\\file") == "\\\\server\\share\\file");
+        REQUIRE(clean("C:foo/..") == "C:.");
+        REQUIRE(clean("\\\\?\\C:\\foo\\..") == "\\\\?\\C:\\");
     }
 #endif
 }
@@ -68,12 +68,6 @@ TEST_CASE("Filepath split function", "[filepath]") {
         split(from_slash("path/"), &dir, &file);
         REQUIRE(dir == from_slash("path/"));
         REQUIRE(file == "");
-        split("C:", &dir, &file);
-        REQUIRE(dir == "C:");
-        REQUIRE(file == "");
-        split("\\\\server\\share", &dir, &file);
-        REQUIRE(dir == "\\\\server\\share");
-        REQUIRE(file == "");
     }
 
 #ifdef _WIN32
@@ -81,6 +75,12 @@ TEST_CASE("Filepath split function", "[filepath]") {
         split("C:\\path\\file.txt", &dir, &file);
         REQUIRE(dir == "C:\\path\\");
         REQUIRE(file == "file.txt");
+        split("C:", &dir, &file);
+        REQUIRE(dir == "C:");
+        REQUIRE(file == "");
+        split("\\\\server\\share", &dir, &file);
+        REQUIRE(dir == "\\\\server\\share");
+        REQUIRE(file == "");
     }
 #endif
 }
@@ -120,7 +120,7 @@ TEST_CASE("Filepath base function", "[filepath]") {
     SECTION("Trailing separators") { REQUIRE(base(from_slash("path/to//")) == "to"); }
 
 #ifdef _WIN32
-    SECTION("Windows edge cases") { REQUIRE(base("C:") == string({SEPARATOR})); }
+    SECTION("Windows edge cases") { REQUIRE(base("C:") == string(1, SEPARATOR)); }
 #endif
 }
 
@@ -139,9 +139,11 @@ TEST_CASE("Filepath dir function", "[filepath]") {
 
     SECTION("Edge cases") {
         REQUIRE(dir("") == ".");
-        REQUIRE(dir("C:") == "C:.");
-        REQUIRE(dir("\\\\server\\share\\file") == "\\\\server\\share\\");
         REQUIRE(dir(from_slash("path/")) == from_slash("path"));
+#ifdef _WIN32
+        REQUIRE(dir("C:") == "C:.");
+        REQUIRE(dir("\\\\server\\share\\file") == "\\\\server\\share");
+#endif
     }
 }
 

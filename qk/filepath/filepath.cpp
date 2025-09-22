@@ -61,7 +61,7 @@ string clean(const string& path) {
     }
 
     post_clean(&out);
-    return from_slash(out.string());
+    return from_slash(out._string());
 }
 
 void split(const string& path, string* dir, string* file) {
