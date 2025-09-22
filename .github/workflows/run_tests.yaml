@@ -1,0 +1,56 @@
+name: "run tests"
+
+on:
+    push:
+    pull_request:
+
+permissions:
+    contents: write
+
+env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+    build:
+        name: Build on ${{ matrix.os }}
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+        steps:
+            -   name: checkout repository
+                uses: actions/checkout@v4
+
+            -   name: set up (linux)
+                if: runner.os == 'Linux'
+                run: |
+                    sudo apt update
+                    sudo apt install -y cmake ninja-build build-essential
+
+            -   name: set up (macos)
+                if: runner.os == 'macOS'
+                run: |
+                    brew install cmake ninja
+                    sudo xcode-select --install || true
+
+            -   name: set up (windows)
+                if: runner.os == 'Windows'
+                run: |
+                    winget install Kitware.CMake Ninja-build.Ninja
+
+
+            -   name: config cmake
+                uses: TheMrMilchmann/setup-msvc-dev@v4
+                run: |
+                    cmake -DCMAKE_BUILD_TYPE=Debug -G Ninja -B cmake-build-debug
+
+            -   name: build
+                uses: TheMrMilchmann/setup-msvc-dev@v4
+                run: |
+                    cmake --build cmake-build-debug
+
+            -   name: run tests
+                run: |
+                    ctest --test-dir cmake-build-debug
