@@ -32,7 +32,7 @@ jobs:
             -   name: set up (macos)
                 if: runner.os == 'macOS'
                 run: |
-                    brew install cmake ninja
+                    brew install cmake ninja llvm
                     sudo xcode-select --install || true
 
             -   name: set up (windows)
@@ -46,8 +46,16 @@ jobs:
                 with:
                     arch: x64
 
-            -   name: config cmake
+            -   name: config cmake (windows/linux)
+                if: runner.os != 'macOS'
                 run: |
+                    cmake -DCMAKE_BUILD_TYPE=Debug -G Ninja -B cmake-build-debug
+
+            -   name: config cmake (macos)
+                if: runner.os == 'macOS'
+                run: |
+                    export CC=$(brew --prefix llvm)/bin/clang
+                    export CXX=$(brew --prefix llvm)/bin/clang++
                     cmake -DCMAKE_BUILD_TYPE=Debug -G Ninja -B cmake-build-debug
 
             -   name: build

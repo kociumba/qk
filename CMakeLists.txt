@@ -151,6 +151,9 @@ if (QK_ENABLE_EVENTS)
 endif ()
 
 if (QK_ENABLE_THREADING)
+    find_package(Threads REQUIRED)
+
     target_compile_definitions(qk PUBLIC QK_THREADING)
+    target_link_libraries(qk PUBLIC Threads::Threads)
     qk_add_test_source(tests/threading_test.cpp)
 endif ()
