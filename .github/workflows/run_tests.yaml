@@ -33,7 +33,9 @@ jobs:
                 if: runner.os == 'macOS'
                 run: |
                     brew install cmake ninja llvm
-                    sudo xcode-select --install || true
+                    echo "PATH=$(brew --prefix llvm)/bin:$PATH" >> $GITHUB_ENV
+                    echo "LDFLAGS=-L$(brew --prefix llvm)/lib" >> $GITHUB_ENV
+                    echo "CPPFLAGS=-I$(brew --prefix llvm)/include" >> $GITHUB_ENV
 
             -   name: set up (windows)
                 if: runner.os == 'Windows'
