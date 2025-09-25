@@ -28,7 +28,7 @@ TEST_CASE("Channel communication", "[threading]") {
 
         go([&ch] { ch.send(42); });
         go([&ch, &result] {
-            if (auto val = ch.receive()) result = *val;
+            if (auto val = ~ch) result = *val;
         });
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -37,11 +37,11 @@ TEST_CASE("Channel communication", "[threading]") {
 
     SECTION("Send and receive on buffered channel") {
         int_channel ch(2);
-        ch.send(1);
-        ch.send(2);
+        ch << 1;
+        ch << 2;
 
-        auto val1 = ch.receive();
-        auto val2 = ch.receive();
+        auto val1 = ~ch;
+        auto val2 = ~ch;
 
         REQUIRE(val1 == 1);
         REQUIRE(val2 == 2);
@@ -59,9 +59,9 @@ TEST_CASE("Channel communication", "[threading]") {
     SECTION("Channel iterator") {
         int_channel ch(3);
         go([&ch] {
-            ch.send(1);
-            ch.send(2);
-            ch.send(3);
+            ch << 1;
+            ch << 2;
+            ch << 3;
             ch.close();
         });
 

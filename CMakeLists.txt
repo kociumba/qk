@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28.3..3.31)
 project(qk LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 23)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -9,17 +9,31 @@ include(CMakeDependentOption)
 
 option(QK_SHARED_LIB "builds qk as a shard lib instead of a static lib" OFF)
 option(QK_BUILD_TESTS "builds the tests for qk" ON)
-
 option(QK_USE_EXCEPT "builds qk with c++ exceptions turned on" OFF)
+option(QK_USE_SANITIZER "build debug builds of qk with sanitizers enabled" OFF)
+
 option(QK_ENABLE_IPC "includes qk ipc in the built lib" ON)
 option(QK_ENABLE_FILEPATH "includes qk filepath in the built lib" ON)
 option(QK_ENABLE_EVENTS "include the qk event bus in the built lib" ON)
 option(QK_ENABLE_THREADING "include the qk gorutine implementation in the built lib" ON)
+option(QK_ENABLE_RUNTIME_UTILS "includes various runtime tricks for hooking/patching/manipulation of binaries" ON)
 
 cmake_dependent_option(QK_NEEDS_REFLECTION "defines if qk needs reflection to work based on the enabled features"
         ON
         "QK_ENABLE_EVENTS"
         OFF)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(QK_SYSTEM windows)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(QK_SYSTEM unix)
+endif ()
+# disable runtime utils on unix for now
+set(QK_ENABLE_RUNTIME_UTILS $<$<QK_SYSTEM:unix>:OFF>)
+
+if (NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    set(QK_BUILD_TESTS OFF) # disable tests when included using add_subdirectory or fetch_content
+endif ()
 
 function(qk_add_test_source path_to_source)
     if (QK_BUILD_TESTS)
@@ -38,6 +52,11 @@ set(QK_SOURCES
         qk/threading/gorutines.cpp
         qk/threading/gorutines.cpp
         qk/threading/gorutines.h
+        qk/runtime/${QK_SYSTEM}/process.cpp
+        qk/runtime/${QK_SYSTEM}/process.h
+        qk/runtime/${QK_SYSTEM}/memory.cpp
+        qk/runtime/${QK_SYSTEM}/memory.h
+        qk/runtime/runtime.h
 )
 
 if (QK_SHARED_LIB OR BUILD_SHARED_LIBS)
@@ -51,20 +70,30 @@ else ()
 endif ()
 
 target_include_directories(qk INTERFACE include)
+target_compile_options(qk PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-frtti>
+        $<$<CXX_COMPILER_ID:MSVC>:/GR>)
 
 if (NOT QK_USE_EXCEPT)
-    if (MSVC)
-        target_compile_options(qk PRIVATE /EHsc)
-    else ()
-        target_compile_options(qk PRIVATE -fno-exceptions)
-    endif ()
+    target_compile_options(qk PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-fno-exceptions>
+            $<$<CXX_COMPILER_ID:MSVC>:/EHs->)
 endif ()
 
-#if (MSVC)
-#    target_compile_options(qk PRIVATE /W4 /WX)
-#else ()
-#    target_compile_options(qk PRIVATE -Wall)
-#endif ()
+set(SANITIZER_FLAGS "")
+#set(SANITIZER_FLAGS $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-fsanitize=address,undefined>
+#        $<$<CXX_COMPILER_ID:MSVC>:/fsanitize=address>)
+
+if (QK_USE_SANITIZER)
+    target_compile_options(qk PRIVATE
+            $<$<CONFIG:Debug>:${SANITIZER_FLAGS}>)
+    target_link_options(qk PRIVATE
+            $<$<CONFIG:Debug>:${SANITIZER_FLAGS}>)
+endif ()
+
+if (QK_SYSTEM STREQUAL "windows")
+    target_compile_definitions(qk PUBLIC QK_WINDOWS QK_SYSTEM=${QK_SYSTEM})
+elseif (QK_SYSTEM STREQUAL "unix")
+    target_compile_definitions(qk PUBLIC QK_UNIX QK_SYSTEM=${QK_SYSTEM})
+endif ()
 
 if (QK_BUILD_TESTS)
     find_package(Catch2 QUIET)
@@ -85,6 +114,9 @@ if (QK_BUILD_TESTS)
 
     add_executable(tests)
     target_link_libraries(tests PRIVATE Catch2::Catch2WithMain qk)
+
+    target_compile_options(tests PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(tests PRIVATE ${SANITIZER_FLAGS})
 
     list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
     include(CTest)
@@ -156,4 +188,9 @@ if (QK_ENABLE_THREADING)
     target_compile_definitions(qk PUBLIC QK_THREADING)
     target_link_libraries(qk PUBLIC Threads::Threads)
     qk_add_test_source(tests/threading_test.cpp)
+endif ()
+
+if (QK_ENABLE_RUNTIME_UTILS)
+    target_compile_definitions(qk PUBLIC QK_RUNTIME_UTILS)
+    qk_add_test_source(tests/runtime_${QK_SYSTEM}.cpp)
 endif ()

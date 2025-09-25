@@ -14,7 +14,7 @@
 namespace qk::threading {
 
 template <typename Func, typename... Args>
-QK_API void go(Func&& func, Args&&... args) {
+void go(Func&& func, Args&&... args) {
     std::jthread([func = std::forward<Func>(func), ... args = std::forward<Args>(args)]() mutable {
         func(std::forward<Args>(args)...);
     }).detach();
@@ -163,11 +163,28 @@ struct QK_API channel {
         return *this;
     }
 
-    channel& operator>>(T& val) {
-        if (auto opt_val = receive()) {
+    // channel& operator>>(T& val) {
+    //     if (auto opt_val = receive()) {
+    //         val = std::move(*opt_val);
+    //     }
+    //     return *this;
+    // }
+
+    // for `auto val = ~ch` since << does not work there as it is defined on the receiving type
+    std::optional<T> operator~() { return receive(); }
+
+    friend T& operator<<(T& val, channel& ch) {
+        if (auto opt_val = ch.receive()) {
             val = std::move(*opt_val);
         }
-        return *this;
+        return val;
+    }
+
+    friend T operator<<(T&& val, channel& ch) {
+        if (auto opt_val = ch.receive()) {
+            val = std::move(*opt_val);
+        }
+        return std::move(val);
     }
 
     struct iterator {

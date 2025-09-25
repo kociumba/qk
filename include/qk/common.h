@@ -19,4 +19,8 @@
 #include "qk_threading.h"
 #endif
 
+#ifdef QK_RUNTIME_UTILS
+#include "qk_runtime.h"
+#endif
+
 #endif  // COMMON_H
