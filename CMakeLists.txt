@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28.3..3.31)
-project(qk LANGUAGES CXX)
+project(qk LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 
@@ -20,7 +20,7 @@ option(QK_ENABLE_RUNTIME_UTILS "includes various runtime tricks for hooking/patc
 
 cmake_dependent_option(QK_NEEDS_REFLECTION "defines if qk needs reflection to work based on the enabled features"
         ON
-        "QK_ENABLE_EVENTS"
+        QK_ENABLE_EVENTS
         OFF)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -29,7 +29,9 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin
     set(QK_SYSTEM unix)
 endif ()
 # disable runtime utils on unix for now
-set(QK_ENABLE_RUNTIME_UTILS $<$<QK_SYSTEM:unix>:OFF>)
+if (QK_SYSTEM STREQUAL "unix")
+    set(QK_ENABLE_RUNTIME_UTILS OFF)
+endif ()
 
 if (NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     set(QK_BUILD_TESTS OFF) # disable tests when included using add_subdirectory or fetch_content
@@ -49,7 +51,6 @@ set(QK_SOURCES
         qk/filepath/filepath.h
         qk/events/events.cpp
         qk/events/events.h
-        qk/threading/gorutines.cpp
         qk/threading/gorutines.cpp
         qk/threading/gorutines.h
         qk/runtime/${QK_SYSTEM}/process.cpp
@@ -117,6 +118,13 @@ if (QK_BUILD_TESTS)
 
     target_compile_options(tests PRIVATE ${SANITIZER_FLAGS})
     target_link_options(tests PRIVATE ${SANITIZER_FLAGS})
+
+    if (QK_SYSTEM STREQUAL "windows")
+        add_executable(init_gl WIN32 tests/extra/init_gl.c)
+        target_link_libraries(init_gl PUBLIC user32
+                gdi32
+                opengl32)
+    endif ()
 
     list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
     include(CTest)

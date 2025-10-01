@@ -47,6 +47,11 @@ bool read_image(byte_vec* dest, const std::string& image_name, Process* proc) {
            ) != 0;
 }
 
+bool read_image(const std::string& image_name, Process* proc) {
+    if (!image_name.empty() || !proc->images.contains(image_name)) return false;
+    return read_image(&proc->images[image_name]->bytes, image_name, proc);
+}
+
 struct window_cb_args {
     DWORD target_pid;
     HWND target_hwnd;
@@ -263,6 +268,24 @@ std::uintptr_t find_pattern(
     if (!proc->images.contains(image_name)) return 0;
 
     return find_pattern(pattern, relative, proc->images[image_name].get());
+}
+
+GraphicsInfo find_graphics_api(Process* proc) {
+    if (!refresh_image_map(proc)) return {};
+
+    for (const auto& [api, modules] : api_modules) {
+        for (const auto& module : modules) {
+            if (proc->images.contains(module)) return {api, 0, module};
+        }
+    }
+
+    return {};
+}
+
+GraphicsInfo find_graphics_ctx(Process* proc, GraphicsInfo info) {
+    if (!info.valid()) return {};
+
+    if (!read_image(info.module_name, proc)) return {};
 }
 
 }  // namespace qk::runtime::proc
