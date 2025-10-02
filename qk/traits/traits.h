@@ -57,14 +57,18 @@ struct Lockable_base {
 static_assert(Lockable<Lockable_base>);
 
 /// the default Hashable implementation is not replicable, based on the memory address of the
-/// inheriting structure
+/// inheriting structure, if you need hashes of the value of structures, use ValueHashable from
+/// trait extras
 template <typename T>
 concept Hashable = requires(const T& t) {
     { t.hash() } -> std::convertible_to<size_t>;
 };
 
 struct Hashable_base {
-    [[nodiscard]] size_t hash() const noexcept { return std::hash<const void*>{}(this); }
+    template <class Self>
+    [[nodiscard]] size_t hash(this Self const& self) noexcept {
+        return std::hash<const void*>{}(static_cast<const void*>(&self));
+    }
 };
 
 static_assert(Hashable<Hashable_base>);

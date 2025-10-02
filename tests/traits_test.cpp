@@ -93,3 +93,26 @@ TEST_CASE("Hashable functionality on derived type", "[traits]") {
 
     SECTION("different hashes for different objects") { REQUIRE(hash1 != hash2); }
 }
+
+#ifdef QK_TRAITS_EXTRA
+
+TEST_CASE("ValueHashable on derived types", "[traits extra]") {
+    enum E { A, B };
+
+    struct foo : ValueHashable_base {
+        int a;
+        E b;
+        std::vector<int> c;
+        std::unordered_map<int, int> d = {{1, 1}};
+    };
+
+    foo f1 = {.a = 69, .b = A, .c = {1, 2, 3, 4}};
+    foo f2 = {.a = 420, .b = B, .c = {1, 9, 3, 4}};
+    foo f3 = {.a = 69, .b = A, .c = {1, 2, 3, 4}};
+
+    SECTION("different value hashes") { REQUIRE(f1.hash() != f2.hash()); }
+
+    SECTION("same hashes for the same value") { REQUIRE(f1.hash() == f3.hash()); }
+}
+
+#endif
