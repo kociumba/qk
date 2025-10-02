@@ -4,6 +4,7 @@
 #ifdef QK_THREADING
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <optional>
@@ -18,6 +19,10 @@ void go(Func&& func, Args&&... args) {
     std::jthread([func = std::forward<Func>(func), ... args = std::forward<Args>(args)]() mutable {
         func(std::forward<Args>(args)...);
     }).detach();
+}
+
+inline void sleep_ms(unsigned int ms) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
 template <typename T>

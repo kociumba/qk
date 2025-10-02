@@ -10,13 +10,14 @@ include(CMakeDependentOption)
 
 option(QK_SHARED_LIB "builds qk as a shard lib instead of a static lib" OFF)
 option(QK_BUILD_TESTS "builds the tests for qk" ON)
+option(QK_BUILD_EXAMPLES "builds the examples for qk" ON)
 option(QK_USE_EXCEPT "builds qk with c++ exceptions turned on" OFF)
 option(QK_USE_SANITIZER "build debug builds of qk with sanitizers enabled" OFF)
 
 option(QK_ENABLE_IPC "includes qk ipc in the built lib" ON)
 option(QK_ENABLE_FILEPATH "includes qk filepath in the built lib" ON)
 option(QK_ENABLE_EVENTS "include the qk event bus in the built lib" ON)
-option(QK_ENABLE_THREADING "include the qk gorutine implementation in the built lib" ON)
+option(QK_ENABLE_THREADING "include the qk goroutine implementation in the built lib" ON)
 option(QK_ENABLE_RUNTIME_UTILS "includes various runtime tricks for hooking/patching/manipulation of binaries" ON)
 option(QK_ENABLE_TRAITS "include the various trait/impl like utilities in the built lib" ON)
 option(QK_ENABLE_TRAITS_EXTRA "include extra traits that require reflection for their default implementations" ON)
@@ -39,6 +40,7 @@ endif ()
 
 if (NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     set(QK_BUILD_TESTS OFF) # disable tests when included using add_subdirectory or fetch_content
+    set(QK_BUILD_EXAMPLES OFF)
 endif ()
 
 function(qk_add_test_source path_to_source)
@@ -136,6 +138,12 @@ if (QK_BUILD_TESTS)
     include(CTest)
     include(Catch)
     catch_discover_tests(tests)
+
+    add_test(
+            NAME go_test_filepath
+            COMMAND go test filepath_test.go
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
 endif ()
 
 if (QK_NEEDS_REFLECTION)
@@ -217,3 +225,12 @@ endif ()
 if (QK_ENABLE_TRAITS_EXTRA)
     target_compile_definitions(qk PUBLIC QK_TRAITS_EXTRA)
 endif ()
+
+file(GLOB EXAMPLE_SOURCES "${CMAKE_SOURCE_DIR}/examples/*.cpp")
+
+foreach (SOURCE_FILE IN LISTS EXAMPLE_SOURCES)
+    get_filename_component(TARGET_NAME "${SOURCE_FILE}" NAME_WE)
+
+    add_executable(${TARGET_NAME} ${SOURCE_FILE})
+    target_link_libraries(${TARGET_NAME} PUBLIC qk)
+endforeach ()
