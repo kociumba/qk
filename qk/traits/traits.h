@@ -4,6 +4,7 @@
 #ifdef QK_TRAITS
 
 #include <concepts>
+#include <functional>
 #include <mutex>
 
 /// this namespace provides trait/impl like functionality for specific utilities

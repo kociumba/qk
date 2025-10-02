@@ -511,7 +511,7 @@ std::size_t value_hash_impl(const T& obj) noexcept {
             sizeof(T) != sizeof(T),
             "Type is not hashable: no std::hash, not reflectable, and no specialized overload"
         );
-        [[unreachable]];
+        return 0;  // unreachable
     }
 }
 
