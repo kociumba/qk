@@ -17,6 +17,7 @@ option(QK_ENABLE_FILEPATH "includes qk filepath in the built lib" ON)
 option(QK_ENABLE_EVENTS "include the qk event bus in the built lib" ON)
 option(QK_ENABLE_THREADING "include the qk gorutine implementation in the built lib" ON)
 option(QK_ENABLE_RUNTIME_UTILS "includes various runtime tricks for hooking/patching/manipulation of binaries" ON)
+option(QK_ENABLE_TRAITS "" ON)
 
 cmake_dependent_option(QK_NEEDS_REFLECTION "defines if qk needs reflection to work based on the enabled features"
         ON
@@ -58,6 +59,7 @@ set(QK_SOURCES
         qk/runtime/${QK_SYSTEM}/memory.cpp
         qk/runtime/${QK_SYSTEM}/memory.h
         qk/runtime/runtime.h
+        qk/traits/traits.h
 )
 
 if (QK_SHARED_LIB OR BUILD_SHARED_LIBS)
@@ -201,4 +203,9 @@ endif ()
 if (QK_ENABLE_RUNTIME_UTILS)
     target_compile_definitions(qk PUBLIC QK_RUNTIME_UTILS)
     qk_add_test_source(tests/runtime_${QK_SYSTEM}.cpp)
+endif ()
+
+if (QK_ENABLE_TRAITS)
+    target_compile_definitions(qk PUBLIC QK_TRAITS)
+    qk_add_test_source(tests/traits_test.cpp)
 endif ()

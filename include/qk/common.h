@@ -23,4 +23,8 @@
 #include "qk_runtime.h"
 #endif
 
+#ifdef QK_TRAITS
+#include "qk_traits.h"
+#endif
+
 #endif  // COMMON_H

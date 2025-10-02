@@ -286,6 +286,8 @@ GraphicsInfo find_graphics_ctx(Process* proc, GraphicsInfo info) {
     if (!info.valid()) return {};
 
     if (!read_image(info.module_name, proc)) return {};
+
+    return {};
 }
 
 }  // namespace qk::runtime::proc
