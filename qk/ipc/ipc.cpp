@@ -268,7 +268,7 @@ bool add_mesh_peer(const std::string& endpoint, IPC* ipc) {
     nng_dialer_set_ms(dialer, NNG_OPT_RECONNMINT, ipc->opts.reconnect);
     nng_dialer_set_ms(dialer, NNG_OPT_RECONNMAXT, ipc->opts.timeout);
 
-    err = nng_dialer_start(dialer, NNG_FLAG_NONBLOCK);
+    err = nng_dialer_start(dialer, /* NNG_FLAG_NONBLOCK */ 0);
     if (err != 0 && err != NNG_ECONNREFUSED) {
         ipc->error_cb("failed to start dialer for " + endpoint, nng_strerror(err));
         nng_dialer_close(dialer);
