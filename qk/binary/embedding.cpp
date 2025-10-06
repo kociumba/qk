@@ -116,7 +116,28 @@ bool Binary::assemble() {
 
     int result = std::system(command.c_str());
 
+#if defined(__APPLE__) && defined(__aarch64__)
+    if (format == Target::MACH_O) patch_macho_arm64(obj_path);
+#endif
+
     return result == 0;
+}
+
+bool patch_macho_arm64(const std::filesystem::path& path) {
+    std::fstream f(path, std::ios::in | std::ios::out | std::ios::binary);
+    if (!f.is_open()) return false;
+
+    uint32_t magic;
+    f.read(reinterpret_cast<char*>(&magic), 4);
+    if (magic != 0xFEEDFACF) return false;
+
+    f.seekp(4);
+    uint32_t cpu_type = 0x0100000C;
+    uint32_t cpu_subtype = 0x00000000;
+    f.write(reinterpret_cast<const char*>(&cpu_type), 4);
+    f.write(reinterpret_cast<const char*>(&cpu_subtype), 4);
+
+    return true;
 }
 
 }  // namespace qk::embed

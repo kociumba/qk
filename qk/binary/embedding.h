@@ -102,9 +102,9 @@ constexpr auto default_arch = Arch::x64;
 #elif defined(__i386__)
 constexpr auto default_arch = Arch::x32;
 #elif defined(__aarch64__)
-constexpr auto default_arch = Arch::arm64;
+constexpr auto default_arch = Arch::x64;
 #elif defined(__arm__)
-constexpr auto default_arch = Arch::arm32;
+constexpr auto default_arch = Arch::x32;
 
 #else
 constexpr auto default_arch = Arch::x64;
@@ -117,7 +117,7 @@ constexpr auto default_arch = Arch::x64;
 #elif defined(__i386__)
 constexpr auto default_arch = Arch::x32;
 #elif defined(__aarch64__)
-constexpr auto default_arch = Arch::arm64;
+constexpr auto default_arch = Arch::x64;
 #else
 
 constexpr auto default_arch = Arch::x64;
@@ -146,6 +146,8 @@ QK_API Binary make_object(
     const std::string& name, Target format = default_target, Arch arch = default_arch,
     const std::string& nasm = nasm_path()
 );
+
+QK_API bool patch_macho_arm64(const std::filesystem::path& path);
 
 }  // namespace qk::embed
 
