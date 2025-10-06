@@ -65,10 +65,20 @@ concept Hashable = requires(const T& t) {
     { t.hash() } -> std::convertible_to<size_t>;
 };
 
+inline std::size_t _combine_hash(std::size_t seed, std::size_t v) noexcept {
+    return seed ^ v + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
+}
+
+/// not consistent on apple arm, due to libc++ not containing pointer hashing
 struct Hashable_base {
     template <class Self>
     [[nodiscard]] size_t hash(this Self const& self) noexcept {
+#if defined(__APPLE__) && defined(__arm64__)
+        auto p = reinterpret_cast<std::uintptr_t>(&self);
+        return _combine_hash(p, 1469598103934665603ULL);
+#else
         return std::hash<const void*>{}(static_cast<const void*>(&self));
+#endif
     }
 };
 
