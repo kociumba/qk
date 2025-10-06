@@ -43,7 +43,7 @@ struct QK_API Process {
     // delete copy to allow for unique_ptr in map
     Process(const Process&) = delete;
     Process& operator=(const Process&) = delete;
-    Process(Process&&) = default;
+    Process(Process&&) noexcept = default;
     Process& operator=(Process&&) = default;
     Process() = default;  // fuck c++
 };
@@ -96,12 +96,12 @@ const __readonly QK_API std::vector riscv_external_call_signature = {
 
 QK_API inline std::wstring to_wstring(const std::string& str) {
     if (str.empty()) {
-        return std::wstring();
+        return {};
     }
 
     int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
     if (size_needed == 0) {
-        return std::wstring();
+        return {};
     }
 
     std::wstring wstr(size_needed, 0);

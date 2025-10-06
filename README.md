@@ -42,17 +42,18 @@ They have plenty of comments explaining what is happening, and can be run if you
 
 ## Modules
 
-qk currently includes 6 modules (traits_extra is treated as an extension of the traits module):
+qk currently includes 7 modules (traits_extra is treated as an extension of the traits module):
 
-| module       | default | description                                                                                                                                                                                            | cmake option              | macro              |
-|--------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|--------------------|
-| events       | `ON`    | provides a type safe event bus where types are used as events (requires external reflection, may be changed to only RTTI)                                                                              | `QK_ENABLE_EVENTS`        | `QK_EVENTS`        |
-| filepath     | `ON`    | this is a port of the go `path/filepath` package, it is tested against the behaviour of the original go code (not all functions are ported, the current subset is the internal `filepathlite` package) | `QK_ENABLE_FILEPATH`      | `QK_FILEPATH`      |
-| ipc          | `ON`    | provides an opinionated non-blocking ipc framework, meant for use mostly in game-loop like scenarios                                                                                                   | `QK_ENABLE_IPC`           | `QK_IPC`           |
-| runtime      | `ON`    | provides various tools for manipulating processes and binaries at runtime (currently only implemented for windows)                                                                                     | `QK_ENABLE_RUNTIME_UTILS` | `QK_RUNTIME_UTILS` |
-| threading    | `ON`    | this is a non 1 to 1 port of the go threading model with goroutines and channels (beware that the current goroutine implementation uses real threads instead of green threads)                         | `QK_ENABLE_THREADING`     | `QK_THREADING`     |
-| traits       | `ON`    | implements a few rust style traits using concepts and static base implementations                                                                                                                      | `QK_ENABLE_TRAITS`        | `QK_TRAITS`        |
-| traits_extra | `ON`    | this is an extension of the traits module, that implements traits requiring external reflection for default implementations                                                                            | `QK_ENABLE_TRAITS_EXTRA`  | `QK_TRAITS_EXTRA`  |
+| module           | default | description                                                                                                                                                               | cmake option              | macro              |
+|------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|--------------------|
+| events           | `ON`    | provides a type safe event bus where types are used as events (requires external reflection)                                                                              | `QK_ENABLE_EVENTS`        | `QK_EVENTS`        |
+| filepath         | `ON`    | this is a port of the go `path/filepath` package, tested against the behaviour of the original go code (the current ported subset is the internal `filepathlite` package) | `QK_ENABLE_FILEPATH`      | `QK_FILEPATH`      |
+| ipc              | `ON`    | provides an opinionated non-blocking ipc framework, meant for use mostly in game-loop like scenarios                                                                      | `QK_ENABLE_IPC`           | `QK_IPC`           |
+| runtime          | `ON`    | provides various tools for manipulating processes and binaries at runtime (currently only supports windows)                                                               | `QK_ENABLE_RUNTIME_UTILS` | `QK_RUNTIME_UTILS` |
+| threading        | `ON`    | this is a non 1 to 1 port of the go threading model with goroutines and channels (beware that the goroutines use real threads instead of green threads)                   | `QK_ENABLE_THREADING`     | `QK_THREADING`     |
+| traits           | `ON`    | implements a few rust style traits using concepts and static base implementations                                                                                         | `QK_ENABLE_TRAITS`        | `QK_TRAITS`        |
+| traits_extra     | `ON`    | extension of the traits module, that implements traits requiring external reflection for default implementations                                                          | `QK_ENABLE_TRAITS_EXTRA`  | `QK_TRAITS_EXTRA`  |
+| embedding/binary | `ON`    | provides a compile time way to embed arbitrary data without compilation slowdowns                                                                                         | `QK_ENABLE_EMBEDDING`     | `QK_EMBEDDING`     |
 
 if using qk without cmake, the macros corresponding to each module need to be defined (most easily in the compile
 command) to generate the implementations and definitions for the module.
@@ -76,7 +77,40 @@ aside from the module options qk exports a few more cmake options:
 | `QK_USE_EXCEPT`     | `OFF`                                    | determines whether qk should be build with exceptions enabled, should be left `OFF` since qk does not use exceptions |
 | `QK_BUILD_EXAMPLES` | `OFF` when qk is imported `ON` otherwise | examples will be added as runnable executable targets in cmake                                                       |
 
-## Code style
+## Build features
+
+The embedding module provides compile time utilities, for embedding files into your binaries, some parts of that
+functionality are availible in code to be imported and used in the `qk::embed` namespace.
+
+But the core functionality is provided through cmake and the `qk_embedder` tool, which allow for compiling files into
+objects which can then be linked to embed data without the overhead of tools like bin2c which go through the compiler
+drastically slowing down compilation on bigger files.
+
+Example usage:
+
+```cmake
+# fetch qk like above or use add_subdirectory
+
+add_executable(example main.cpp)
+qk_embed_file(
+        TARGET example
+        FILE ${CMAKE_SOURCE_DIR}/assets/logo.png
+)
+```
+
+Then the data for logo.png becomes available in the executable as:
+
+```c++
+extern const unsigned char logo_data[];
+extern const unsigned char logo_end[];
+extern const uint64_t logo_size;
+```
+
+> [!NOTE]
+> This uses [NASM](https://www.nasm.us/) to compile the file data to objects, if nasm is not installed on the system
+> vendored nasm binaries are provided
+
+## Code style and requirements
 
 qk does not use c++ exceptions, oop and virtual dispatch and requires c++23 and up.
 

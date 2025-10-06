@@ -21,6 +21,7 @@ option(QK_ENABLE_THREADING "include the qk goroutine implementation in the built
 option(QK_ENABLE_RUNTIME_UTILS "includes various runtime tricks for hooking/patching/manipulation of binaries" ON)
 option(QK_ENABLE_TRAITS "include the various trait/impl like utilities in the built lib" ON)
 option(QK_ENABLE_TRAITS_EXTRA "include extra traits that require reflection for their default implementations" ON)
+option(QK_ENABLE_EMBEDDING "include utilities for embedding/reading data in binary files" ON)
 
 cmake_dependent_option(QK_NEEDS_REFLECTION "defines if qk needs reflection to work based on the enabled features"
         ON
@@ -66,6 +67,8 @@ set(QK_SOURCES
         qk/runtime/runtime.h
         qk/traits/traits.h
         qk/traits/traits_extra.h
+        qk/binary/embedding.cpp
+        qk/binary/embedding.h
 )
 
 if (QK_SHARED_LIB OR BUILD_SHARED_LIBS)
@@ -225,6 +228,51 @@ endif ()
 if (QK_ENABLE_TRAITS_EXTRA)
     target_compile_definitions(qk PUBLIC QK_TRAITS_EXTRA)
 endif ()
+
+if (QK_ENABLE_EMBEDDING)
+    find_program(QK_NASM_EXECUTABLE nasm NO_CACHE)
+
+    if (QK_NASM_EXECUTABLE)
+        message(STATUS "Using system NASM: ${QK_NASM_EXECUTABLE}")
+    else ()
+        message(STATUS "Using vendored NASM...")
+
+        if (WIN32)
+            set(_nasm_name "nasm.exe")
+        elseif (APPLE)
+            set(_nasm_name "nasm_macos")
+        elseif (UNIX)
+            set(_nasm_name "nasm_linux")
+        else ()
+            message(FATAL_ERROR "Unsupported platform for vendored NASM.")
+        endif ()
+
+        set(QK_NASM_EXECUTABLE
+                "${CMAKE_CURRENT_SOURCE_DIR}/vendor/nasm/${_nasm_name}"
+        )
+
+        if (NOT EXISTS "${QK_NASM_EXECUTABLE}")
+            message(FATAL_ERROR
+                    "Vendored NASM not found at ${QK_NASM_EXECUTABLE}. "
+                    "Please provide prebuilt binaries under vendor/nasm/ or install NASM on your system"
+            )
+        endif ()
+    endif ()
+
+    add_executable(qk_embedder tools/embedder/embedder.cpp)
+    target_link_libraries(qk_embedder PUBLIC qk)
+
+    include(scripts/embedding.cmake)
+
+    target_compile_definitions(qk PUBLIC QK_EMBEDDING QK_NASM="${QK_NASM_EXECUTABLE}")
+    qk_add_test_source(tests/embedding_test.cpp)
+    qk_embed_file(
+            TARGET tests
+            FILE ${CMAKE_SOURCE_DIR}/tests/embed_me.txt
+    )
+endif ()
+
+# examples
 
 file(GLOB EXAMPLE_SOURCES "${CMAKE_SOURCE_DIR}/examples/*.cpp")
 

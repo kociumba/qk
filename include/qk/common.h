@@ -27,4 +27,8 @@
 #include "qk_traits.h"
 #endif
 
+#ifdef QK_EMBEDDING
+#include "qk_binary.h"
+#endif
+
 #endif  // COMMON_H
