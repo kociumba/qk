@@ -74,13 +74,13 @@ enum class Arch {
     x32,
 };
 
-static __readonly std::unordered_map<Target, std::string_view> format_map = {
+static std::unordered_map<Target, std::string_view> format_map = {
     {Target::ELF, "elf"},
     {Target::PE, "win"},
     {Target::MACH_O, "macho"},
 };
 
-static __readonly std::unordered_map<Arch, std::string_view> arch_map = {
+static std::unordered_map<Arch, std::string_view> arch_map = {
     {Arch::x64, "64"},
     {Arch::x32, "32"},
 };
