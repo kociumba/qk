@@ -67,7 +67,7 @@ bool Binary::render() {
 
     if (use_gas_syntax) {
         for (const auto& symbol : symbols) {
-            asm_file << ".globl " << symbol << "\n";
+            asm_file << ".globl _" << symbol << "\n";
         }
         asm_file << "\n";
         asm_file << ".section __TEXT,__const\n\n";
@@ -80,7 +80,7 @@ bool Binary::render() {
         asm_file << "section .rodata\n\n";
     }
 
-    asm_file << symbols[0] << ":\n";
+    asm_file << (use_gas_syntax ? "_" : "") << symbols[0] << ":\n";
     for (size_t i = 0; i < data.size(); ++i) {
         if (i % 16 == 0) {
             asm_file << "    " << (use_gas_syntax ? ".byte " : "db ");
@@ -96,13 +96,13 @@ bool Binary::render() {
     }
 
     if (symbols.size() > 2) {
-        asm_file << symbols[2] << ":\n";
+        asm_file << (use_gas_syntax ? "_" : "") << symbols[2] << ":\n";
     }
 
     if (symbols.size() > 1) {
         if (use_gas_syntax) {
             asm_file << "\n    .align 3\n";
-            asm_file << "\n" << symbols[1] << ":\n";
+            asm_file << "\n_" << symbols[1] << ":\n";
             asm_file << "    .quad " << std::dec << data.size() << "\n";
         } else {
             asm_file << "\n" << symbols[1] << ":\n";
