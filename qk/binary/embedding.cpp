@@ -109,16 +109,17 @@ bool Binary::assemble() {
     }
     obj_path += asm_filepath.stem().string() + object_ext;
 
+#if defined(__APPLE__) && defined(__aarch64__)
+    std::string command =
+        "clang -c -x assembler -arch arm64 -o \"" + obj_path + "\" \"" + asm_path + "\"";
+#else
     std::string format_str(format_map.at(format));
     std::string arch_str(arch_map.at(arch));
     std::string command = nasm_path + " -f " + format_str + arch_str + " -o \"" + obj_path +
                           "\" \"" + asm_path + "\"";
+#endif
 
     int result = std::system(command.c_str());
-
-#if defined(__APPLE__) && defined(__aarch64__)
-    if (format == Target::MACH_O) patch_macho_arm64(obj_path);
-#endif
 
     return result == 0;
 }
@@ -127,16 +128,22 @@ bool patch_macho_arm64(const std::filesystem::path& path) {
     std::fstream f(path, std::ios::in | std::ios::out | std::ios::binary);
     if (!f.is_open()) return false;
 
-    uint32_t magic;
+    uint32_t magic = 0;
     f.read(reinterpret_cast<char*>(&magic), 4);
-    if (magic != 0xFEEDFACF) return false;
 
-    f.seekp(4);
-    uint32_t cpu_type = 0x0100000C;
-    uint32_t cpu_subtype = 0x00000000;
-    f.write(reinterpret_cast<const char*>(&cpu_type), 4);
-    f.write(reinterpret_cast<const char*>(&cpu_subtype), 4);
+    if (magic != 0xFEEDFACF) {
+        return false;
+    }
 
+    f.seekp(4, std::ios::beg);
+
+    const uint32_t CPU_TYPE_ARM64 = 0x0100000C;
+    const uint32_t CPU_SUBTYPE_ARM64_ALL = 0x00000000;
+
+    f.write(reinterpret_cast<const char*>(&CPU_TYPE_ARM64), 4);
+    f.write(reinterpret_cast<const char*>(&CPU_SUBTYPE_ARM64_ALL), 4);
+
+    f.flush();
     return true;
 }
 

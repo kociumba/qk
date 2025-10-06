@@ -147,7 +147,9 @@ QK_API Binary make_object(
     const std::string& nasm = nasm_path()
 );
 
-QK_API bool patch_macho_arm64(const std::filesystem::path& path);
+[[deprecated("this api can produce corrupted arm binaries")]] QK_API bool patch_macho_arm64(
+    const std::filesystem::path& path
+);
 
 }  // namespace qk::embed
 
