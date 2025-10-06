@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <memory>
 #include <string>
 #include <string_view>

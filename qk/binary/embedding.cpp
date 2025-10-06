@@ -57,21 +57,36 @@ bool Binary::render() {
         return false;
     }
 
-    asm_file << "BITS " << arch_map.at(arch) << "\n\n";
-    for (const auto& symbol : symbols) {
-        asm_file << "global " << symbol << "\n";
-    }
-    asm_file << "\n";
+#if defined(__APPLE__) && defined(__aarch64__)
+    bool is_apple_arm = true;
+#else
+    bool is_apple_arm = false;
+#endif
 
-    asm_file << "section .rodata\n\n";
+    bool use_gas_syntax = is_apple_arm;
+
+    if (use_gas_syntax) {
+        for (const auto& symbol : symbols) {
+            asm_file << ".globl " << symbol << "\n";
+        }
+        asm_file << "\n";
+        asm_file << ".section __TEXT,__const\n\n";
+    } else {
+        asm_file << "BITS " << arch_map.at(arch) << "\n\n";
+        for (const auto& symbol : symbols) {
+            asm_file << "global " << symbol << "\n";
+        }
+        asm_file << "\n";
+        asm_file << "section .rodata\n\n";
+    }
 
     asm_file << symbols[0] << ":\n";
     for (size_t i = 0; i < data.size(); ++i) {
         if (i % 16 == 0) {
-            asm_file << "    db ";
+            asm_file << "    " << (use_gas_syntax ? ".byte " : "db ");
         }
-        asm_file << "0x" << std::hex << std::setfill('0') << std::setw(2)
-                 << static_cast<int>(static_cast<unsigned char>(data[i]));
+        asm_file << "0x" << std::hex << std::setw(2) << std::setfill('0')
+                 << (static_cast<unsigned int>(static_cast<unsigned char>(data[i])) & 0xFF);
 
         if (i + 1 < data.size() && (i + 1) % 16 != 0) {
             asm_file << ", ";
@@ -85,8 +100,14 @@ bool Binary::render() {
     }
 
     if (symbols.size() > 1) {
-        asm_file << "\n" << symbols[1] << ":\n";
-        asm_file << "    dq " << std::dec << data.size() << "\n";
+        if (use_gas_syntax) {
+            asm_file << "\n    .align 3\n";
+            asm_file << "\n" << symbols[1] << ":\n";
+            asm_file << "    .quad " << std::dec << data.size() << "\n";
+        } else {
+            asm_file << "\n" << symbols[1] << ":\n";
+            asm_file << "    dq " << std::dec << data.size() << "\n";
+        }
     }
 
     asm_file.close();
