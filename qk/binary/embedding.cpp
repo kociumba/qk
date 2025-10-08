@@ -177,7 +177,7 @@ std::vector<std::byte> decompress_data(const unsigned char* data, uint64_t size)
     if (ret != Z_OK) return {};
 
     std::vector<std::byte> buf;
-    buf.reserve(std::min(size * 2 + 1024, size_t(1ULL << 20)));
+    buf.reserve(std::min(size * 2 + 1024, uint64_t(1ULL << 20)));
 
     Bytef out_byte;
     do {
