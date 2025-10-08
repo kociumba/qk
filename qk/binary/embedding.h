@@ -5,6 +5,7 @@
 
 #include <zlib.h>
 #include <cstddef>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
