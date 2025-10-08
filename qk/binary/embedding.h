@@ -4,6 +4,7 @@
 #ifdef QK_EMBEDDING
 
 #include <zlib.h>
+#include <algorithm>
 #include <cstddef>
 #include <cstring>
 #include <filesystem>
