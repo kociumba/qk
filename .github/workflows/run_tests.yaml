@@ -55,9 +55,7 @@ jobs:
 
             -   name: set up msvc
                 if: runner.os == 'Windows'
-                uses: TheMrMilchmann/setup-msvc-dev@v4
-                with:
-                    arch: x64
+                uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
 
             -   name: config cmake (windows/linux)
                 if: runner.os != 'macOS'
