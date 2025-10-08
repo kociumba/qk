@@ -259,8 +259,28 @@ if (QK_ENABLE_EMBEDDING)
         endif ()
     endif ()
 
+    find_package(zlib CONFIG COMPONENTS static QUIET)
+    if (NOT zlib_FOUND)
+        include(FetchContent)
+        set(ZLIB_BUILD_TESTING OFF)
+        FetchContent_Declare(
+                zlib
+                DOWNLOAD_EXTRACT_TIMESTAMP OFF
+                GIT_REPOSITORY https://github.com/madler/zlib
+                GIT_TAG v1.3.1
+                SYSTEM)
+        FetchContent_GetProperties(zlib)
+        if (NOT zlib_POPULATED)
+            set(FETCHCONTENT_QUIET NO)
+            FetchContent_MakeAvailable(zlib)
+        endif ()
+    endif ()
+
+    target_link_libraries(qk PUBLIC zlibstatic)
+    target_compile_definitions(qk PUBLIC QK_HAS_ZLIB)
+
     add_executable(qk_embedder tools/embedder/embedder.cpp)
-    target_link_libraries(qk_embedder PUBLIC qk)
+    target_link_libraries(qk_embedder PUBLIC qk zlibstatic)
 
     include(scripts/embedding.cmake)
 
@@ -269,6 +289,8 @@ if (QK_ENABLE_EMBEDDING)
     qk_embed_file(
             TARGET tests
             FILE ${CMAKE_SOURCE_DIR}/tests/embed_me.txt
+            KEEP_ASM
+            COMPRESSION compression
     )
 endif ()
 

@@ -1,6 +1,6 @@
 function(qk_embed_file)
     set(options KEEP_ASM)
-    set(oneValueArgs TARGET OUTPUT_VAR FILE)
+    set(oneValueArgs TARGET FILE COMPRESSION)
     set(multiValueArgs "")
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -34,6 +34,20 @@ function(qk_embed_file)
     set(_extra_args "")
     if (ARG_KEEP_ASM)
         list(APPEND _extra_args "-k")
+    endif ()
+
+    if (ARG_COMPRESSION)
+        if (ARG_COMPRESSION STREQUAL "none")
+            list(APPEND _extra_args "-c:none")
+        elseif (ARG_COMPRESSION STREQUAL "speed")
+            list(APPEND _extra_args "-c:speed")
+        elseif (ARG_COMPRESSION STREQUAL "default")
+            list(APPEND _extra_args "-c")
+        elseif (ARG_COMPRESSION STREQUAL "compression")
+            list(APPEND _extra_args "-c:compression")
+        else ()
+            message(FATAL_ERROR "Invalid compression level: ${ARG_COMPRESSION}. Valid: none, speed, default, compression")
+        endif ()
     endif ()
 
     add_custom_command(

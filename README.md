@@ -120,6 +120,10 @@ qk does not use c++ exceptions, oop and virtual dispatch and requires c++23 and 
 | clang    | 18.x                     |
 | msvc     | 19.43 (VS 2022 17.13+)   |
 
+> [!TIP]
+> Disabling the `traits` module will most likely lower these compiler version requirements, since that module uses the
+> newest c++23 features
+
 Most qk modules and features are designed to have as little performance impact as possible or shift it onto comp time
 instead of impacting runtime.
 

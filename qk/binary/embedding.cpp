@@ -145,6 +145,76 @@ bool Binary::assemble() {
     return result == 0;
 }
 
+bool compress_object(Binary* bin, int level) {
+    if (bin->data.empty()) return false;
+
+    uLongf bound = compressBound(bin->data.size());
+    std::vector<Bytef> buf(bound);
+    auto err = compress2(
+        buf.data(), &bound, reinterpret_cast<Bytef*>(bin->data.data()), bin->data.size(), level
+    );
+    if (err != Z_OK) {
+        return false;
+    }
+
+    bin->data.resize(bound);
+    std::memcpy(bin->data.data(), buf.data(), bound);
+
+    return true;
+}
+
+std::vector<std::byte> decompress_data(const unsigned char* data, uint64_t size) {
+    if (!data || !size) return {};
+
+    z_stream stream = {};
+    stream.next_in = const_cast<Bytef*>(data);
+    stream.avail_in = static_cast<uInt>(size);
+    stream.zalloc = Z_NULL;
+    stream.zfree = Z_NULL;
+    stream.opaque = Z_NULL;
+
+    int ret = inflateInit2(&stream, MAX_WBITS);
+    if (ret != Z_OK) return {};
+
+    std::vector<std::byte> buf;
+    buf.reserve(std::min(size * 2 + 1024, size_t(1ULL << 20)));
+
+    Bytef out_byte;
+    do {
+        stream.next_out = &out_byte;
+        stream.avail_out = 1;
+
+        ret = inflate(&stream, Z_NO_FLUSH);
+        if (ret == Z_OK) {
+            buf.push_back(static_cast<std::byte>(out_byte));
+        } else if (ret == Z_STREAM_END) {
+            if (stream.avail_out == 0) {
+                buf.push_back(static_cast<std::byte>(out_byte));
+            }
+            break;
+        } else if (ret != Z_BUF_ERROR) {
+            (void)inflateEnd(&stream);
+            return {};
+        }
+    } while (stream.avail_in > 0);
+
+    stream.next_out = &out_byte;
+    stream.avail_out = 1;
+    ret = inflate(&stream, Z_FINISH);
+    if (ret == Z_OK || ret == Z_STREAM_END) {
+        if (stream.avail_out == 0) {
+            buf.push_back(static_cast<std::byte>(out_byte));
+        }
+    } else if (ret != Z_BUF_ERROR) {
+        (void)inflateEnd(&stream);
+        return {};
+    }
+
+    (void)inflateEnd(&stream);
+
+    return buf;
+}
+
 bool patch_macho_arm64(const std::filesystem::path& path) {
     std::fstream f(path, std::ios::in | std::ios::out | std::ios::binary);
     if (!f.is_open()) return false;

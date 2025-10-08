@@ -1,4 +1,5 @@
 #include <qk/qk_binary.h>
+#include <zlib.h>
 #include <filesystem>
 #include <iostream>
 
@@ -8,11 +9,19 @@ void print_usage(const char* prog_name) {
               << "  -o, --output <dir>     Output directory for object files (default: current "
                  "directory)\n"
               << "  -k, --keep-asm         Keep assembly files after assembling (default: delete)\n"
+              << "  -c, -c:<level>         Compress the file data before embedding\n"
+              << "                         Levels: none, speed, default, compression\n"
               << "  -f, --format <fmt>     Target format: elf, pe, macho (default: auto-detect)\n"
               << "  -a, --arch <arch>      Target architecture: x64, x32 (default: auto-detect)\n"
               << "  -h, --help             Show this help message\n"
+              << "\nCompression Levels:\n"
+              << "  none         - No compression (store only)\n"
+              << "  speed        - Fastest compression\n"
+              << "  default      - Balanced compression (used when -c has no level)\n"
+              << "  compression  - Maximum compression\n"
               << "\nExample:\n"
-              << "  " << prog_name << " -o build/ data.bin texture.png\n";
+              << "  " << prog_name << " -o build/ data.bin texture.png\n"
+              << "  " << prog_name << " -c:compression -o build/ large_asset.bin\n";
 }
 
 #ifdef _WIN32
@@ -32,6 +41,8 @@ int main(int argc, char* argv[]) {
     std::vector<std::string> input_files;
     std::string output_dir = ".";
     bool keep_asm = false;
+    bool compress = false;
+    int compress_level = Z_DEFAULT_COMPRESSION;
     Target target = default_target;
     Arch arch = default_arch;
 
@@ -43,6 +54,26 @@ int main(int argc, char* argv[]) {
             return 0;
         } else if (arg == "-k" || arg == "--keep-asm") {
             keep_asm = true;
+        } else if (arg == "-c" || arg.rfind("-c:", 0) == 0) {
+            compress = true;
+
+            if (arg.length() > 3 && arg[2] == ':') {
+                std::string level = arg.substr(3);
+
+                if (level == "none") {
+                    compress_level = Z_NO_COMPRESSION;
+                } else if (level == "speed") {
+                    compress_level = Z_BEST_SPEED;
+                } else if (level == "default") {
+                    compress_level = Z_DEFAULT_COMPRESSION;
+                } else if (level == "compression") {
+                    compress_level = Z_BEST_COMPRESSION;
+                } else {
+                    std::cerr << "Error: Unknown compression level '" << level << "'\n";
+                    std::cerr << "Valid levels: none, speed, default, compression\n";
+                    return 1;
+                }
+            }
         } else if ((arg == "-o" || arg == "--output") && i + 1 < argc) {
             output_dir = argv[++i];
         } else if ((arg == "-f" || arg == "--format") && i + 1 < argc) {
@@ -112,6 +143,32 @@ int main(int argc, char* argv[]) {
             if (!std::isalnum(static_cast<unsigned char>(c))) {
                 c = '_';
             }
+        }
+
+        size_t original_size = bin.data.size();
+
+        if (compress) {
+            const char* level_name = "default";
+            if (compress_level == Z_NO_COMPRESSION)
+                level_name = "none";
+            else if (compress_level == Z_BEST_SPEED)
+                level_name = "speed";
+            else if (compress_level == Z_BEST_COMPRESSION)
+                level_name = "compression";
+
+            std::cout << "  Compressing with level '" << level_name << "'..." << std::endl;
+            if (!compress_object(&bin, compress_level)) {
+                std::cerr << "  Error: Failed to compress file\n";
+                failed_count++;
+                continue;
+            }
+            size_t compressed_size = bin.data.size();
+            double ratio = 100.0 * (1.0 - (double)compressed_size / (double)original_size);
+
+            std::cout << "  Original size: " << original_size << " bytes\n";
+            std::cout << "  Compressed size: " << compressed_size << " bytes\n";
+            std::cout << "  Compression ratio: " << std::fixed << std::setprecision(1) << ratio
+                      << "%\n";
         }
 
         bin.asm_path = output_dir + "/" + base_name + ".asm";

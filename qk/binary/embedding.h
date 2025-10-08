@@ -3,6 +3,7 @@
 
 #ifdef QK_EMBEDDING
 
+#include <zlib.h>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
@@ -14,6 +15,18 @@
 #include <utility>
 #include <vector>
 #include "../api.h"
+
+/// simple convenience macro to define the extern for a qk embedded data begin, file_name should be
+/// the name of the embedded file with all ascii incompatible characters replaced with _
+#define QK_GET_EMBED_DATA(file_name) extern const unsigned char file_name##_data[]
+
+/// simple convenience macro to define the extern for a qk embedded data end, file_name should be
+/// the name of the embedded file with all ascii incompatible characters replaced with _
+#define QK_GET_EMBED_END(file_name) extern const unsigned char file_name##_end[]
+
+/// simple convenience macro to define the extern for a qk embedded data size, file_name should be
+/// the name of the embedded file with all ascii incompatible characters replaced with _
+#define QK_GET_EMBED_SIZE(file_name) extern const uint64_t file_name##_size
 
 namespace qk::embed {
 
@@ -142,6 +155,9 @@ struct QK_API Binary {
     bool render();
     bool assemble();
 };
+
+QK_API bool compress_object(Binary* bin, int level = Z_DEFAULT_COMPRESSION);
+QK_API std::vector<std::byte> decompress_data(const unsigned char* data, uint64_t size);
 
 QK_API Binary make_object(
     const std::string& name, Target format = default_target, Arch arch = default_arch,
