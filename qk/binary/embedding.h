@@ -30,6 +30,16 @@
 /// the name of the embedded file with all ascii incompatible characters replaced with _
 #define QK_GET_EMBED_SIZE(file_name) extern const uint64_t file_name##_size
 
+#ifdef __linux__
+#define RUNTIME_DEPRECATION                                                                        \
+    [[deprecated(                                                                                  \
+        "runtime discovery is currently unsupported on linux if the executable is not built with " \
+        "'-rdynamic'"                                                                              \
+    )]]
+#else
+#define RUNTIME_DEPRECATION
+#endif
+
 namespace qk::embed {
 
 #ifdef _WIN32
@@ -220,6 +230,7 @@ struct QK_API SymbolCache {
 #endif
 
     void clear() {
+        handle = nullptr;
         file_to_symbol.clear();
         symbol_to_resource.clear();
     }
@@ -227,9 +238,12 @@ struct QK_API SymbolCache {
 
 extern SymbolCache default_symbol_cache;
 
-bool setup_cache(SymbolCache* cache = &default_symbol_cache);
-void* find_symbol(const std::string& name, SymbolCache* cache = &default_symbol_cache);
-Resource find_resource(const std::string& filename, SymbolCache* cache = &default_symbol_cache);
+RUNTIME_DEPRECATION QK_API bool setup_cache(SymbolCache* cache = &default_symbol_cache);
+RUNTIME_DEPRECATION QK_API void* find_symbol(
+    const std::string& name, SymbolCache* cache = &default_symbol_cache
+);
+RUNTIME_DEPRECATION QK_API Resource
+find_resource(const std::string& filename, SymbolCache* cache = &default_symbol_cache);
 
 QK_API bool compress_object(Binary* bin, int level = Z_DEFAULT_COMPRESSION);
 QK_API std::vector<std::byte> decompress_data(const unsigned char* data, uint64_t size);
