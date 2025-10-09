@@ -40,6 +40,7 @@
 #define RUNTIME_DEPRECATION
 #endif
 
+/// defines utilities for embedding and retrieving embedded data in binaries
 namespace qk::embed {
 
 #ifdef _WIN32
@@ -184,6 +185,7 @@ QK_API inline void sanitize_symbol(std::string& name) {
     }
 }
 
+/// utility to get the symbol base used by the embedding system from a file name
 QK_API inline std::string filename_to_symbol(const std::string& filename) {
     std::filesystem::path filepath(filename);
     std::string base_name = filepath.stem().string();
@@ -191,6 +193,7 @@ QK_API inline std::string filename_to_symbol(const std::string& filename) {
     return base_name;
 }
 
+/// used in place of static compile time variables when using the runtime symbol resolution
 struct QK_API Resource {
     const unsigned char* data = nullptr;
     const unsigned char* data_end = nullptr;
@@ -214,6 +217,8 @@ struct StringHash {
 };
 #endif
 
+/// caches symbols when using runtime resolution to make subsequent queries for the same static data
+/// faster
 struct QK_API SymbolCache {
 #ifdef _WIN32
     HANDLE handle;
@@ -238,16 +243,33 @@ struct QK_API SymbolCache {
 
 extern SymbolCache default_symbol_cache;
 
+/// sets up 'SymbolCache' with valid state
+///
+/// in most scenarios this does not need to be called manually
 RUNTIME_DEPRECATION QK_API bool setup_cache(SymbolCache* cache = &default_symbol_cache);
+
+/// finds a symbol at runtime in the current binary, mostly for internal use
 RUNTIME_DEPRECATION QK_API void* find_symbol(
     const std::string& name, SymbolCache* cache = &default_symbol_cache
 );
+
+/// the main way to find embedded data at runtime
+///
+/// it expects the file name of the file that was embedded, the returned 'Resource' can be checked
+/// with '.is_valid()' to see if the embedding was found
+///
+/// !!! CURRENTLY DEPRECATED ON LINUX DUE TO IMPLEMENTATION ISSUES !!!
 RUNTIME_DEPRECATION QK_API Resource
 find_resource(const std::string& filename, SymbolCache* cache = &default_symbol_cache);
 
+/// compresses the data in a 'Binary', to prepare it for embedding
 QK_API bool compress_object(Binary* bin, int level = Z_DEFAULT_COMPRESSION);
+
+/// decompress data from an embedded object, should not be called on data that was not compressed at
+/// compile time
 QK_API std::vector<std::byte> decompress_data(const unsigned char* data, uint64_t size);
 
+/// creates a 'Binary' object preloaded with data needed for assembling it into an object
 QK_API Binary make_object(
     const std::string& name, Target format = default_target, Arch arch = default_arch,
     const std::string& nasm = nasm_path()

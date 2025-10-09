@@ -7,6 +7,7 @@
 #include <optional>
 #include <utility>
 
+/// implements miscellaneous small utilities not deserving of their own modules
 namespace qk::utils {
 
 /// similar to 'std::scope_exit', more go like and simpler, designed to be used with the 'defer'

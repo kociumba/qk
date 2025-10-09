@@ -524,6 +524,9 @@ std::size_t combine_values_hash(const Ts&... xs) noexcept {
 
 }  // namespace vh
 
+/// defines a trait constraining a type to be ValueHashable, meant to be used when a hash for the
+/// value of an instance of a complex type is needed
+///
 /// implements basic value hashing, compared to Hashable it guarantees the same hash on the same
 /// value of a type, but requires reflection and has a bigger compilation and runtime impact
 template <typename T>
@@ -531,6 +534,8 @@ concept ValueHashable = requires(T& t) {
     { t.hash() } -> std::convertible_to<size_t>;
 };
 
+/// base struct fulfilling the 'ValueHashable' trait, meant to be inherited from to provide a
+/// default implementation of the trait
 struct ValueHashable_base {
     template <class Self>
     [[nodiscard]] size_t hash(this Self const& self) noexcept {

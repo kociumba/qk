@@ -6,6 +6,7 @@
 #include "../../api.h"
 #include "../memory.h"
 
+/// not yet implemented for unix
 namespace qk::runtime::proc {
 
 using namespace qk::runtime::mem;

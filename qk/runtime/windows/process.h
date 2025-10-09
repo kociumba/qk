@@ -13,6 +13,8 @@
 #include "../../api.h"
 #include "../memory.h"
 
+/// will be documented using doc comments at a later date, probably when I get around to
+/// implementing the unix version of this namespace
 namespace qk::runtime::proc {
 
 using namespace qk::runtime::mem;

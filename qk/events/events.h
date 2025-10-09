@@ -26,13 +26,14 @@ struct QK_API Subscriber {
     int id;
 };
 
-// this uses reflection to use types as events
+/// the main event bus type, used for all the event operations
 struct QK_API EventBus {
     std::mutex mu;
     std::atomic_int id_counter = 0;
     std::unordered_map<size_t, std::vector<Subscriber>> subscribers;
 };
 
+/// subscribes a new subscriber to an event type, subscribers are not deduplicated
 template <typename Event>
 int subscribe(event_cb callback, EventBus* bus) {
     std::lock_guard l(bus->mu);
@@ -48,9 +49,13 @@ int subscribe(event_cb callback, EventBus* bus) {
 
 // int subscribe(event_cb callback, reflect::detail::any event_type, EventBus* bus);
 
+/// unsubscribes a specific subscriber using its id, the id can be retrieved when subscribing
 QK_API void unsubscribe(int id, EventBus* bus);
+
+/// unsubscribes all subscribers, essentially clearing the event bus
 QK_API void unsubscribe_all(EventBus* bus);
 
+/// removes an event type from the event bus and unsubscribes all subscribers for that type
 template <typename Event>
 void remove_event(EventBus* bus) {
     std::lock_guard l(bus->mu);
@@ -59,6 +64,7 @@ void remove_event(EventBus* bus) {
 
 // void remove_event(reflect::detail::any event_type, EventBus* bus);
 
+/// publishes an event, does not check if the type has at least a single subscriber
 template <typename Event>
 void publish(Event event, EventBus* bus) {
     std::lock_guard l(bus->mu);

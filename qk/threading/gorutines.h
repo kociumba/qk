@@ -12,8 +12,12 @@
 #include <thread>
 #include "../api.h"
 
+/// implements go style threading with focus on simplicity of use
 namespace qk::threading {
 
+/// implements a goroutine port from go, unlike in go this uses real threads instead of green
+/// threads, this makes it unsuitable for spawning thousands of tasks, but performs quite well for
+/// simple asynchronous calls
 template <typename Func, typename... Args>
 void go(Func&& func, Args&&... args) {
     std::jthread([func = std::forward<Func>(func), ... args = std::forward<Args>(args)]() mutable {
@@ -21,10 +25,25 @@ void go(Func&& func, Args&&... args) {
     }).detach();
 }
 
+/// sleeps the current thread for the provided amount of milliseconds
 inline void sleep_ms(unsigned int ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
+/// implements a go style channel, all internals are exposed and implementing custom consumers is
+/// encouraged
+///
+/// this channel implementation can be both buffered and unbuffered, in buffered mode the channel
+/// also has iterator support
+///
+/// sending and receiving is done either using methods on the 'channel' type or using the operator
+/// overloads:
+///
+///     'ch << val;' - send a value through the channel
+///
+///     'var << ch;' - receives a value from the channel
+///
+///     'auto var = ~ch;' - receives a value from the channel in a way that enables type deduction
 template <typename T>
 struct QK_API channel {
     std::queue<T> _queue;
@@ -60,6 +79,7 @@ struct QK_API channel {
     channel(const channel&) = delete;
     channel& operator=(const channel&) = delete;
 
+    /// sends a value through the channel, used by the '<<' send overload
     bool send(const T& val) {
         std::unique_lock l(_mu);
         if (_closed.load()) return false;
@@ -87,6 +107,7 @@ struct QK_API channel {
         return true;
     }
 
+    /// sends a value through the channel, used by the '<<' send overload
     bool send(T&& val) {
         std::unique_lock l(_mu);
         if (_closed.load()) return false;
@@ -115,6 +136,7 @@ struct QK_API channel {
         return true;
     }
 
+    /// receives a value from the channel, used by both '<<' and '~' operators
     std::optional<T> receive() {
         std::unique_lock l(_mu);
 
@@ -149,6 +171,7 @@ struct QK_API channel {
         return val;
     }
 
+    /// closes the channel making it inactive
     void close() {
         std::lock_guard l(_mu);
         _closed = true;
@@ -156,6 +179,7 @@ struct QK_API channel {
         _not_full.notify_all();
     }
 
+    /// used to check if the channel is closed to know if a value can be sent or recieved from it
     bool is_closed() const { return _closed.load(); }
 
     channel& operator<<(const T& val) {
