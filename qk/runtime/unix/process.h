@@ -1,7 +1,17 @@
 #ifndef PROCESS_UNIX_H
 #define PROCESS_UNIX_H
 
-// all the utils from the windows version, should be ported to unix at some point, but as I am
-// not very familiar with unix api this will happen at a later date
+#ifdef QK_RUNTIME_UTILS
+
+#include "../../api.h"
+#include "../memory.h"
+
+namespace qk::runtime::proc {
+
+using namespace qk::runtime::mem;
+
+}
+
+#endif
 
 #endif  // PROCESS_UNIX_H

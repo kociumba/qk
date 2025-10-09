@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <vector>
 #include "../../api.h"
-#include "memory.h"
+#include "../memory.h"
 
 namespace qk::runtime::proc {
 
@@ -21,14 +21,6 @@ using namespace qk::runtime::mem;
 #include <windows.h>
 
 #include <TlHelp32.h>
-
-struct QK_API Image {
-    std::uintptr_t base;
-    size_t size;
-    byte_vec bytes;
-
-    bool is64 = false;
-};
 
 struct QK_API Process {
     HANDLE process;

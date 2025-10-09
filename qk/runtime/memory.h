@@ -7,7 +7,7 @@
 #include <locale>
 #include <string_view>
 #include <vector>
-#include "../../api.h"
+#include "../api.h"
 
 namespace qk::runtime::mem {
 
@@ -16,6 +16,14 @@ namespace qk::runtime::mem {
 #endif
 
 using byte_vec = std::vector<std::byte>;
+
+struct QK_API Image {
+    std::uintptr_t base;
+    size_t size;
+    byte_vec bytes;
+
+    bool is64 = false;
+};
 
 constexpr int hex_to_nibble(char c) noexcept {
     if (c >= '0' && c <= '9') return c - '0';

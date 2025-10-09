@@ -4,6 +4,8 @@
 
 namespace qk::embed {
 
+SymbolCache default_symbol_cache = {};
+
 Binary make_object(const std::string& name, Target format, Arch arch, const std::string& nasm) {
     std::ifstream file(name, std::ios::in | std::ios::binary | std::ios::ate);
 
@@ -30,11 +32,7 @@ Binary make_object(const std::string& name, Target format, Arch arch, const std:
     std::filesystem::path filepath(name);
     std::string base_name = filepath.stem().string();
 
-    for (auto& c : base_name) {
-        if (!std::isalnum(static_cast<unsigned char>(c))) {
-            c = '_';
-        }
-    }
+    sanitize_symbol(base_name);
 
     std::string asm_path = filepath.parent_path().string();
     if (!asm_path.empty()) {
@@ -75,6 +73,10 @@ bool Binary::render() {
         asm_file << "BITS " << arch_map.at(arch) << "\n\n";
         for (const auto& symbol : symbols) {
             asm_file << "global " << symbol << "\n";
+            // enables runtime symbol discovery on winapi
+            if (format == Target::PE) {
+                asm_file << "export " << symbol << "\n";
+            }
         }
         asm_file << "\n";
         asm_file << "section .rodata\n\n";
@@ -145,6 +147,78 @@ bool Binary::assemble() {
     return result == 0;
 }
 
+bool setup_cache(SymbolCache* cache) {
+    if (!cache) {
+        return false;
+    }
+
+#ifdef _WIN32
+    cache->handle = GetModuleHandle(nullptr);
+    if (!cache->handle) {
+        return false;
+    }
+#else
+    cache->handle = RTLD_DEFAULT;
+#endif
+
+    return true;
+}
+
+void* find_symbol(const std::string& name, SymbolCache* cache) {
+    if (!cache) return nullptr;
+    if (!cache->handle) setup_cache(cache);
+
+#ifdef _WIN32
+    return reinterpret_cast<void*>(GetProcAddress((HMODULE)cache->handle, name.c_str()));
+#elif defined(__APPLE__)
+    std::string prefixed = "_" + name;
+    void* sym = dlsym(cache->handle, prefixed.c_str());
+    if (!sym) {
+        sym = dlsym(cache->handle, name.c_str());
+    }
+    return sym;
+#else
+    return dlsym(cache->handle, name.c_str());
+#endif
+}
+
+Resource find_resource(const std::string& filename, SymbolCache* cache) {
+    if (!cache) return {};
+    if (!cache->handle) setup_cache(cache);
+
+    auto cached_symbol = cache->file_to_symbol.find(filename);
+    std::string base_name;
+
+    if (cached_symbol != cache->file_to_symbol.end()) {
+        base_name = cached_symbol->second;
+        auto cached_resource = cache->symbol_to_resource.find(base_name);
+        if (cached_resource != cache->symbol_to_resource.end()) {
+            return cached_resource->second;
+        }
+    } else {
+        base_name = filename_to_symbol(filename);
+        cache->file_to_symbol[filename] = base_name;
+    }
+
+    std::string data_sym = base_name + "_data";
+    std::string size_sym = base_name + "_size";
+    std::string end_sym = base_name + "_end";
+
+    const auto* data = static_cast<const unsigned char*>(find_symbol(data_sym, cache));
+    const auto* size_ptr = static_cast<const uint64_t*>(find_symbol(size_sym, cache));
+    const auto* data_end = static_cast<const unsigned char*>(find_symbol(end_sym, cache));
+
+    Resource res;
+    if (data && size_ptr && data_end) {
+        res.data = data;
+        res.size = *size_ptr;
+        res.data_end = data_end;
+        cache->symbol_to_resource[base_name] = res;
+    }
+
+    return res;
+}
+
 bool compress_object(Binary* bin, int level) {
     if (bin->data.empty()) return false;
 
@@ -177,7 +251,7 @@ std::vector<std::byte> decompress_data(const unsigned char* data, uint64_t size)
     if (ret != Z_OK) return {};
 
     std::vector<std::byte> buf;
-    buf.reserve(std::min(size * 2 + 1024, uint64_t(1ULL << 20)));
+    buf.reserve(min(size * 2 + 1024, uint64_t(1ULL << 20)));
 
     Bytef out_byte;
     do {

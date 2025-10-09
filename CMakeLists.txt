@@ -62,8 +62,8 @@ set(QK_SOURCES
         qk/threading/gorutines.h
         qk/runtime/${QK_SYSTEM}/process.cpp
         qk/runtime/${QK_SYSTEM}/process.h
-        qk/runtime/${QK_SYSTEM}/memory.cpp
-        qk/runtime/${QK_SYSTEM}/memory.h
+        qk/runtime/memory.cpp
+        qk/runtime/memory.h
         qk/runtime/runtime.h
         qk/traits/traits.h
         qk/traits/traits_extra.h
@@ -262,13 +262,21 @@ if (QK_ENABLE_EMBEDDING)
     find_package(zlib CONFIG COMPONENTS static QUIET)
     if (NOT zlib_FOUND)
         include(FetchContent)
-        set(ZLIB_BUILD_TESTING OFF)
+        set(ZLIB_BUILD_TESTING OFF CACHE BOOL "Disable zlib tests" INTERNAL)
+        set(ZLIB_INSTALL OFF CACHE BOOL "Disable zlib install target" INTERNAL)
+        set(ZLIB_BUILD_SHARED OFF CACHE BOOL "Build zlib as a static library" INTERNAL)
+        set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "Disable zlib examples" INTERNAL)
         FetchContent_Declare(
                 zlib
                 DOWNLOAD_EXTRACT_TIMESTAMP OFF
                 GIT_REPOSITORY https://github.com/madler/zlib
                 GIT_TAG v1.3.1
-                SYSTEM)
+                SYSTEM
+                CMAKE_ARGS
+                -DZLIB_BUILD_TESTING=OFF
+                -DZLIB_INSTALL=OFF
+                -DZLIB_BUILD_SHARED=OFF
+                -DZLIB_BUILD_EXAMPLES=OFF)
         FetchContent_GetProperties(zlib)
         if (NOT zlib_POPULATED)
             set(FETCHCONTENT_QUIET NO)

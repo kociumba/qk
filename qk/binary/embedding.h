@@ -33,6 +33,13 @@
 namespace qk::embed {
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
+#ifdef _WIN32
 static std::string object_ext = ".obj";
 #else
 static std::string object_ext = ".o";
@@ -157,6 +164,53 @@ struct QK_API Binary {
     bool render();
     bool assemble();
 };
+
+QK_API inline void sanitize_symbol(std::string& name) {
+    for (auto& c : name) {
+        if (!std::isalnum(static_cast<unsigned char>(c))) {
+            c = '_';
+        }
+    }
+}
+
+QK_API inline std::string filename_to_symbol(const std::string& filename) {
+    std::filesystem::path filepath(filename);
+    std::string base_name = filepath.stem().string();
+    sanitize_symbol(base_name);
+    return base_name;
+}
+
+struct QK_API Resource {
+    const unsigned char* data = nullptr;
+    const unsigned char* data_end = nullptr;
+    uint64_t size = 0;
+
+    [[nodiscard]] bool is_valid() const {
+        return data != nullptr && data_end != nullptr && size != 0;
+    }
+};
+
+struct QK_API SymbolCache {
+#ifdef _WIN32
+    HANDLE handle;
+#else
+    void* handle;
+#endif
+
+    std::unordered_map<std::string, std::string> file_to_symbol;
+    std::unordered_map<std::string, Resource> symbol_to_resource;
+
+    void clear() {
+        file_to_symbol.clear();
+        symbol_to_resource.clear();
+    }
+};
+
+extern SymbolCache default_symbol_cache;
+
+bool setup_cache(SymbolCache* cache = &default_symbol_cache);
+void* find_symbol(const std::string& name, SymbolCache* cache = &default_symbol_cache);
+Resource find_resource(const std::string& filename, SymbolCache* cache = &default_symbol_cache);
 
 QK_API bool compress_object(Binary* bin, int level = Z_DEFAULT_COMPRESSION);
 QK_API std::vector<std::byte> decompress_data(const unsigned char* data, uint64_t size);
