@@ -191,6 +191,19 @@ struct QK_API Resource {
     }
 };
 
+#ifdef __APPLE__
+struct StringHash {
+    size_t operator()(const std::string& str) const noexcept {
+        size_t hash = 1469598103934665603ULL;
+        for (char c : str) {
+            hash ^= static_cast<size_t>(c);
+            hash *= 0x9e3779b97f4a7c15ULL;
+        }
+        return hash;
+    }
+};
+#endif
+
 struct QK_API SymbolCache {
 #ifdef _WIN32
     HANDLE handle;
@@ -198,8 +211,13 @@ struct QK_API SymbolCache {
     void* handle;
 #endif
 
+#ifdef __APPLE__
+    std::unordered_map<std::string, std::string, StringHash> file_to_symbol;
+    std::unordered_map<std::string, Resource, StringHash> symbol_to_resource;
+#else
     std::unordered_map<std::string, std::string> file_to_symbol;
     std::unordered_map<std::string, Resource> symbol_to_resource;
+#endif
 
     void clear() {
         file_to_symbol.clear();
