@@ -32,7 +32,7 @@ jobs:
                 if: runner.os == 'Linux'
                 run: |
                     sudo apt update
-                    sudo apt install -y cmake ninja-build build-essential nasm
+                    sudo apt install -y cmake ninja-build build-essential
                     sudo apt install software-properties-common -y
                     sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
                     sudo apt install gcc-14 g++-14 -y
@@ -41,7 +41,7 @@ jobs:
             -   name: set up (macos)
                 if: runner.os == 'macOS'
                 run: |
-                    brew install cmake ninja llvm nasm
+                    brew install cmake ninja llvm
                     sudo xcode-select --install || true
                     echo "PATH=$(brew --prefix llvm)/bin:$PATH" >> $GITHUB_ENV
                     echo "LDFLAGS=-L$(brew --prefix llvm)/lib" >> $GITHUB_ENV

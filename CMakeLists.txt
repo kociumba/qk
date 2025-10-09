@@ -260,6 +260,10 @@ if (QK_ENABLE_EMBEDDING)
                     "Please provide prebuilt binaries under vendor/nasm/ or install NASM on your system"
             )
         endif ()
+
+        if (UNIX OR APPLE)
+            file(CHMOD "${QK_NASM_EXECUTABLE}" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+        endif ()
     endif ()
 
     find_package(zlib CONFIG COMPONENTS static QUIET)
