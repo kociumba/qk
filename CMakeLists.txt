@@ -22,6 +22,7 @@ option(QK_ENABLE_RUNTIME_UTILS "includes various runtime tricks for hooking/patc
 option(QK_ENABLE_TRAITS "include the various trait/impl like utilities in the built lib" ON)
 option(QK_ENABLE_TRAITS_EXTRA "include extra traits that require reflection for their default implementations" ON)
 option(QK_ENABLE_EMBEDDING "include utilities for embedding/reading data in binary files" ON)
+option(QK_ENABLE_UTILS "include miscellaneous utilities that are too small to have their own modules" ON)
 
 cmake_dependent_option(QK_NEEDS_REFLECTION "defines if qk needs reflection to work based on the enabled features"
         ON
@@ -34,6 +35,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(QK_SYSTEM unix)
 endif ()
+
 # disable runtime utils on unix for now
 if (QK_SYSTEM STREQUAL "unix")
     set(QK_ENABLE_RUNTIME_UTILS OFF)
@@ -69,6 +71,7 @@ set(QK_SOURCES
         qk/traits/traits_extra.h
         qk/binary/embedding.cpp
         qk/binary/embedding.h
+        qk/utils/utils.h
 )
 
 if (QK_SHARED_LIB OR BUILD_SHARED_LIBS)
@@ -300,6 +303,11 @@ if (QK_ENABLE_EMBEDDING)
             KEEP_ASM
             COMPRESSION compression
     )
+endif ()
+
+if (QK_ENABLE_UTILS)
+    target_compile_definitions(qk PUBLIC QK_UTILS)
+    qk_add_test_source(tests/utils_test.cpp)
 endif ()
 
 # examples

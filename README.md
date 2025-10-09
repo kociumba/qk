@@ -42,7 +42,7 @@ They have plenty of comments explaining what is happening, and can be run if you
 
 ## Modules
 
-qk currently includes 7 modules (traits_extra is treated as an extension of the traits module):
+qk currently includes 8 modules (traits_extra is treated as an extension of the traits module):
 
 | module           | default | description                                                                                                                                                               | cmake option              | macro              |
 |------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|--------------------|
@@ -54,6 +54,7 @@ qk currently includes 7 modules (traits_extra is treated as an extension of the 
 | traits           | `ON`    | implements a few rust style traits using concepts and static base implementations                                                                                         | `QK_ENABLE_TRAITS`        | `QK_TRAITS`        |
 | traits_extra     | `ON`    | extension of the traits module, that implements traits requiring external reflection for default implementations                                                          | `QK_ENABLE_TRAITS_EXTRA`  | `QK_TRAITS_EXTRA`  |
 | embedding/binary | `ON`    | provides a compile time way to embed arbitrary data without compilation slowdowns                                                                                         | `QK_ENABLE_EMBEDDING`     | `QK_EMBEDDING`     |
+| utils            | `ON`    | encompasses all of the small utilities that don't deserve their own modules like go style defer                                                                           | `QK_ENABLE_UTILS`         | `QK_UTILS`         |
 
 if using qk without cmake, the macros corresponding to each module need to be defined (most easily in the compile
 command) to generate the implementations and definitions for the module.
@@ -80,7 +81,7 @@ aside from the module options qk exports a few more cmake options:
 ## Build features
 
 The embedding module provides compile time utilities, for embedding files into your binaries, some parts of that
-functionality are availible in code to be imported and used in the `qk::embed` namespace.
+functionality are available in code to be imported and used in the `qk::embed` namespace.
 
 But the core functionality is provided through cmake and the `qk_embedder` tool, which allow for compiling files into
 objects which can then be linked to embed data without the overhead of tools like bin2c which go through the compiler

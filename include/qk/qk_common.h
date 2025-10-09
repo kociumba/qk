@@ -31,4 +31,8 @@
 #include "qk_binary.h"
 #endif
 
+#ifdef QK_UTILS
+#include "qk_utils.h"
+#endif
+
 #endif  // COMMON_H
