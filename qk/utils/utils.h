@@ -5,6 +5,7 @@
 
 #include <concepts>
 #include <optional>
+#include <functional>
 #include <tuple>
 #include <utility>
 #include "../api.h"
