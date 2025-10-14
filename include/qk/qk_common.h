@@ -35,4 +35,8 @@
 #include "qk_utils.h"
 #endif
 
+#ifdef QK_CLI
+#include "qk_cli.h"
+#endif
+
 #endif  // COMMON_H

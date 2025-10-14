@@ -23,6 +23,7 @@ option(QK_ENABLE_TRAITS "include the various trait/impl like utilities in the bu
 option(QK_ENABLE_TRAITS_EXTRA "include extra traits that require reflection for their default implementations" ON)
 option(QK_ENABLE_EMBEDDING "include utilities for embedding/reading data in binary files" ON)
 option(QK_ENABLE_UTILS "include miscellaneous utilities that are too small to have their own modules" ON)
+option(QK_ENABLE_CLI "includes utilities for building clis" ON)
 
 cmake_dependent_option(QK_NEEDS_REFLECTION "defines if qk needs reflection to work based on the enabled features"
         ON
@@ -72,6 +73,8 @@ set(QK_SOURCES
         qk/binary/embedding.cpp
         qk/binary/embedding.h
         qk/utils/utils.h
+        qk/cli/cli.cpp
+        qk/cli/cli.h
 )
 
 if (QK_SHARED_LIB OR BUILD_SHARED_LIBS)
@@ -175,6 +178,7 @@ if (QK_NEEDS_REFLECTION)
 
     target_sources(qk PUBLIC ${reflect_src_SOURCE_DIR}/reflect #[=[ ${mp_src_SOURCE_DIR}/mp ]=])
     target_include_directories(qk PUBLIC ${reflect_src_SOURCE_DIR} #[=[ ${mp_src_SOURCE_DIR} ]=])
+    target_compile_definitions(qk PUBLIC QK_HAS_REFLECTION)
 endif ()
 
 if (QK_ENABLE_IPC)
@@ -301,17 +305,25 @@ if (QK_ENABLE_EMBEDDING)
 
     target_compile_definitions(qk PUBLIC QK_EMBEDDING QK_NASM="${QK_NASM_EXECUTABLE}")
     qk_add_test_source(tests/embedding_test.cpp)
-    qk_embed_file(
-            TARGET tests
-            FILE ${CMAKE_SOURCE_DIR}/tests/embed_me.txt
-            KEEP_ASM
-            COMPRESSION compression
-    )
+
+    if (QK_BUILD_TESTS)
+        qk_embed_file(
+                TARGET tests
+                FILE ${CMAKE_SOURCE_DIR}/tests/embed_me.txt
+                KEEP_ASM
+                COMPRESSION compression
+        )
+    endif ()
 endif ()
 
 if (QK_ENABLE_UTILS)
     target_compile_definitions(qk PUBLIC QK_UTILS)
     qk_add_test_source(tests/utils_test.cpp)
+endif ()
+
+if (QK_ENABLE_CLI)
+    target_compile_definitions(qk PUBLIC QK_CLI)
+    qk_add_test_source(tests/cli_test.cpp)
 endif ()
 
 # examples
