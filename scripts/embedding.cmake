@@ -23,12 +23,19 @@ function(qk_embed_file)
     set(_out_dir "${CMAKE_CURRENT_BINARY_DIR}/embedded")
     file(MAKE_DIRECTORY "${_out_dir}")
 
-    get_filename_component(_base "${ARG_FILE}" NAME_WE)
+    get_filename_component(_filepath "${ARG_FILE}" ABSOLUTE)
+    string(REGEX REPLACE "^.*/([^/]+)\\.[^.]*$" "\\1" _base "${_filepath}")
+
+    string(REGEX REPLACE "[^a-zA-Z0-9]" "_" _sanitized_base "${_base}")
+
+    if (_sanitized_base MATCHES "^[0-9]")
+        set(_sanitized_base "_${_sanitized_base}")
+    endif ()
 
     if (WIN32)
-        set(_obj "${_out_dir}/${_base}.obj")
+        set(_obj "${_out_dir}/${_sanitized_base}.obj")
     else ()
-        set(_obj "${_out_dir}/${_base}.o")
+        set(_obj "${_out_dir}/${_sanitized_base}.o")
     endif ()
 
     set(_extra_args "")
@@ -58,7 +65,7 @@ function(qk_embed_file)
             VERBATIM
     )
 
-    add_custom_target(${ARG_TARGET}_embed_${_base} DEPENDS "${_obj}")
+    add_custom_target(${ARG_TARGET}_embed_${_sanitized_base} DEPENDS "${_obj}")
 
     target_sources(${ARG_TARGET} PRIVATE "${_obj}")
 
