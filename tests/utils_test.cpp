@@ -14,6 +14,15 @@ TEST_CASE("Utils testing") {
         }
     }
 
+    SECTION("generic stream") {
+        using namespace qk::utils;
+        stream<int> s;
+
+        s << 6 << 9;
+        REQUIRE(s.size() == 2);
+        std::println("stream: {}", s);
+    }
+
     // SECTION("partial application") {
     //     using namespace qk::utils;
     //

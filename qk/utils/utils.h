@@ -3,11 +3,15 @@
 
 #ifdef QK_UTILS
 
+#include <algorithm>
 #include <concepts>
-#include <optional>
 #include <functional>
+#include <optional>
+#include <ranges>
+#include <span>
 #include <tuple>
 #include <utility>
+
 #include "../api.h"
 
 /// implements miscellaneous small utilities not deserving of their own modules
@@ -47,6 +51,84 @@ struct QK_API ScopeGuard {
 /// same as 'defer' and 'defer_val', does not automatically wrap the provided code in a lambda, just
 /// passes it directly to the scope guard
 #define defer_raw(func) qk::utils::ScopeGuard qk_defer_##__LINE__(func)
+
+// generic stream type, simplifies concatenation and repeated operations on arrays
+template <typename T>
+struct stream {
+    std::vector<T> data;
+
+    stream() = default;
+    stream(size_t size) : data(size) {}
+    stream(T* begin, T* end) : data(begin, end) {}
+
+    template <std::ranges::input_range R>
+        requires(!std::same_as<std::remove_cvref_t<R>, stream>)
+    stream(R&& range) {
+        if constexpr (std::is_rvalue_reference_v<R&&>) {
+            data = std::vector<T>(
+                std::make_move_iterator(std::ranges::begin(range)),
+                std::make_move_iterator(std::ranges::end(range))
+            );
+        } else {
+            data = std::vector<T>(std::ranges::begin(range), std::ranges::end(range));
+        }
+    }
+    stream(std::from_range_t, auto&& range) : data(std::forward<decltype(range)>(range)) {}
+
+    stream(std::span<const T> span) : data(span.begin(), span.end()) {}
+    stream(std::span<T> span) : data(span.begin(), span.end()) {}
+
+    stream(stream&& other) noexcept = default;
+    stream& operator=(stream&& other) noexcept = default;
+    stream(const stream& other) = default;
+    stream& operator=(const stream& other) = default;
+
+    friend stream& operator<<(stream& s, T&& value) {
+        s.data.emplace_back(std::forward<T>(value));
+        return s;
+    }
+
+    friend stream& operator<<(stream& s, const T& value) {
+        s.data.push_back(value);
+        return s;
+    }
+
+    template <std::ranges::input_range R>
+    stream& operator<<(R&& range) {
+        if constexpr (std::is_rvalue_reference_v<R&&>) {
+            std::ranges::move(range, std::back_inserter(data));
+        } else {
+            std::ranges::copy(range, std::back_inserter(data));
+        }
+        return *this;
+    }
+
+    friend T* operator~(stream& s) noexcept { return s.data.data(); }
+    friend const T* operator~(const stream& s) noexcept { return s.data.data(); }
+
+    operator T*() noexcept { return data.data(); }
+    operator const T*() const noexcept { return data.data(); }
+
+    [[nodiscard]] T& operator[](std::size_t pos) { return data[pos]; }
+    [[nodiscard]] const T& operator[](std::size_t pos) const { return data[pos]; }
+
+    [[nodiscard]] size_t size() const { return data.size(); }
+    [[nodiscard]] bool empty() const noexcept { return data.empty(); }
+
+    [[nodiscard]] T* render() noexcept { return data.data(); }
+    [[nodiscard]] const T* render() const noexcept { return data.data(); }
+
+    void reserve(size_t n) { data.reserve(n); }
+    void clear() noexcept { data.clear(); }
+
+    auto begin() { return data.begin(); }
+    auto begin() const { return data.begin(); }
+    auto end() { return data.end(); }
+    auto end() const { return data.end(); }
+};
+
+template <typename T>
+stream(T) -> stream<T>;
 
 // experimental partial application implementation, since it is so big, it might be moved to a
 // functional package if finished and in a working state
