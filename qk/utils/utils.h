@@ -5,14 +5,40 @@
 
 #include <algorithm>
 #include <concepts>
+#include <cstdlib>
 #include <functional>
+#include <iostream>
+#include <mutex>
 #include <optional>
 #include <ranges>
+#include <source_location>
 #include <span>
+#include <sstream>
+#include <string>
 #include <tuple>
+#include <unordered_set>
 #include <utility>
 
 #include "../api.h"
+
+#if defined(_MSC_VER)
+#define DEBUG_BREAK() __debugbreak()
+#elif defined(__clang__) || defined(__GNUC__)
+#define DEBUG_BREAK() __builtin_trap()
+#else
+#define DEBUG_BREAK() std::abort()
+#pragma message("QK_ALWAYS_ASSERT will not be able to trigger a debug trap on this compiler")
+#endif
+
+#define QK_ALWAYS_ASSERT(expr)                                                              \
+    do {                                                                                    \
+        if (!(expr)) {                                                                      \
+            std::cerr << "FALSE ASSERT: " << #expr << " at " << __FILE__ << ":" << __LINE__ \
+                      << std::endl;                                                         \
+            DEBUG_BREAK();                                                                  \
+            std::abort();                                                                   \
+        }                                                                                   \
+    } while (0)
 
 /// implements miscellaneous small utilities not deserving of their own modules
 namespace qk::utils {
@@ -52,7 +78,10 @@ struct QK_API ScopeGuard {
 /// passes it directly to the scope guard
 #define defer_raw(func) qk::utils::ScopeGuard qk_defer_##__LINE__(func)
 
-// generic stream type, simplifies concatenation and repeated operations on arrays
+/// generic stream type, thin wrapper around a std::vector to simplify stream like operations
+///
+/// the implementation is optimized to introduces as little overhead over using std::vector as
+/// possible
 template <typename T>
 struct stream {
     std::vector<T> data;
@@ -95,11 +124,17 @@ struct stream {
 
     template <std::ranges::input_range R>
     stream& operator<<(R&& range) {
+        data.reserve(data.size() + std::ranges::size(range));
         if constexpr (std::is_rvalue_reference_v<R&&>) {
             std::ranges::move(range, std::back_inserter(data));
         } else {
             std::ranges::copy(range, std::back_inserter(data));
         }
+        return *this;
+    }
+
+    stream& operator--() {
+        data.pop_back();
         return *this;
     }
 
@@ -118,17 +153,235 @@ struct stream {
     [[nodiscard]] T* render() noexcept { return data.data(); }
     [[nodiscard]] const T* render() const noexcept { return data.data(); }
 
+    [[nodiscard]] std::span<T> span() noexcept { return data; }
+    [[nodiscard]] std::span<const T> span() const noexcept { return data; }
+
     void reserve(size_t n) { data.reserve(n); }
+    [[nodiscard]] size_t capacity() const { return data.capacity(); }
+    void compact() { data.shrink_to_fit(); }
     void clear() noexcept { data.clear(); }
 
     auto begin() { return data.begin(); }
     auto begin() const { return data.begin(); }
     auto end() { return data.end(); }
     auto end() const { return data.end(); }
+
+    // fancy features
+    template <std::invocable Func>
+        requires std::same_as<std::invoke_result_t<Func>, bool>
+    void filter(Func&& func) {
+        std::erase_if(data, [&](const T& item) { return !func(item); });
+        this.compact();
+    }
+
+    template <std::invocable Func>
+    auto map(Func&& func) {
+        using Res = std::invoke_result_t<Func, decltype(*this.begin())>;
+        stream<Res> result;
+        result.reserve(this.size());
+        for (auto&& x : this) {
+            result << func(x);
+        }
+
+        return result;
+    }
 };
 
-template <typename T>
-stream(T) -> stream<T>;
+/// runs a provided invocable only once per source location
+template <std::invocable Func>
+void once(Func&& func, std::source_location loc = std::source_location::current()) {
+    static std::unordered_set<std::string> registry;
+    static std::mutex mu;
+
+    std::stringstream ss;
+    ss << loc.file_name() << loc.line() << loc.column();
+    const auto id = ss.str();
+
+    {
+        std::lock_guard l(mu);
+        if (!registry.contains(id)) {
+            registry.insert(id);
+            func();
+        }
+    }
+}
+
+/// a rust style result, prioritising usage ergonomics, since that is the downfall of rusts result
+template <typename OK, typename ERR>
+struct Result {
+    union {
+        OK ok_val;
+        ERR err_val;
+    };
+    bool is_ok;
+
+    ~Result() {
+        if (is_ok) {
+            ok_val.~OK();
+        } else {
+            err_val.~ERR();
+        }
+    }
+
+    Result(const OK& ok) : ok_val(ok), is_ok(true) {}
+    Result(OK&& ok) : ok_val(std::move(ok)), is_ok(true) {}
+
+    Result(const ERR& err) : err_val(err), is_ok(false) {}
+    Result(ERR&& err) : err_val(std::move(err)), is_ok(false) {}
+
+    Result(const Result& other) : is_ok(other.is_ok) {
+        if (is_ok)
+            std::construct_at(&ok_val, other.ok_val);
+        else
+            std::construct_at(&err_val, other.err_val);
+    }
+
+    Result(
+        Result&& other
+    ) noexcept(std::is_nothrow_move_constructible_v<OK> && std::is_nothrow_move_constructible_v<ERR>)
+        : is_ok(other.is_ok) {
+        if (is_ok)
+            std::construct_at(&ok_val, std::move(other.ok_val));
+        else
+            std::construct_at(&err_val, std::move(other.err_val));
+    }
+
+    Result& operator=(const Result& other) {
+        if (this != &other) {
+            this->~Result();
+            std::construct_at(this, other);
+        }
+        return *this;
+    }
+
+    Result& operator=(Result&& other) noexcept {
+        if (this != &other) {
+            this->~Result();
+            std::construct_at(this, std::move(other));
+        }
+        return *this;
+    }
+
+    template <typename T>
+        requires(
+            !std::same_as<std::decay_t<T>, Result> &&
+            ((std::constructible_from<OK, T> && !std::constructible_from<ERR, T>) ||
+             (std::constructible_from<ERR, T> && !std::constructible_from<OK, T>))
+        )
+    Result(T&& value) {
+        if constexpr (std::is_constructible_v<OK, T>) {
+            std::construct_at(&ok_val, std::forward<T>(value));
+            is_ok = true;
+        } else if constexpr (std::is_constructible_v<ERR, T>) {
+            std::construct_at(&err_val, std::forward<T>(value));
+            is_ok = false;
+        } else
+            static_assert(sizeof(T) == 0, "T must be convertible to OK or ERR");
+    }
+
+    explicit operator OK&() & {
+        QK_ALWAYS_ASSERT(is_ok && "Attempted to convert error Result to OK type");
+        return ok_val;
+    }
+
+    explicit operator const OK&() const& {
+        QK_ALWAYS_ASSERT(is_ok && "Attempted to convert error Result to OK type");
+        return ok_val;
+    }
+
+    explicit operator OK&&() && {
+        QK_ALWAYS_ASSERT(is_ok && "Attempted to convert error Result to OK type");
+        return std::move(ok_val);
+    }
+
+    explicit operator ERR&() & {
+        QK_ALWAYS_ASSERT(!is_ok && "Attempted to convert OK Result to ERR type");
+        return err_val;
+    }
+
+    explicit operator const ERR&() const& {
+        QK_ALWAYS_ASSERT(!is_ok && "Attempted to convert OK Result to ERR type");
+        return err_val;
+    }
+
+    explicit operator ERR&&() && {
+        QK_ALWAYS_ASSERT(!is_ok && "Attempted to convert OK Result to ERR type");
+        return std::move(err_val);
+    }
+
+    friend bool operator==(const Result& a, const Result& b)
+        requires std::equality_comparable<OK> && std::equality_comparable<ERR>
+    {
+        if (a.is_ok != b.is_ok) return false;
+        return a.is_ok ? (a.ok_val == b.ok_val) : (a.err_val == b.err_val);
+    }
+
+    [[nodiscard]] bool ok() const noexcept { return is_ok; }
+    [[nodiscard]] bool err() const noexcept { return !is_ok; }
+
+    OK& unwrap() & {
+        QK_ALWAYS_ASSERT(is_ok && "Unwrapped an error Result");
+        return ok_val;
+    }
+    const OK& unwrap() const& {
+        QK_ALWAYS_ASSERT(is_ok && "Unwrapped an error Result");
+        return ok_val;
+    }
+    OK&& unwrap() && {
+        QK_ALWAYS_ASSERT(is_ok && "Unwrapped an error Result");
+        return std::move(ok_val);
+    }
+
+    ERR& unwrap_err() & {
+        QK_ALWAYS_ASSERT(!is_ok && "Unwrapped an OK Result");
+        return err_val;
+    }
+    const ERR& unwrap_err() const& {
+        QK_ALWAYS_ASSERT(!is_ok && "Unwrapped an OK Result");
+        return err_val;
+    }
+    ERR&& unwrap_err() && {
+        QK_ALWAYS_ASSERT(!is_ok && "Unwrapped an OK Result");
+        return std::move(err_val);
+    }
+
+    OK unwrap_or(OK&& default_val) && {
+        return is_ok ? std::move(ok_val) : std::forward<OK>(default_val);
+    }
+    const OK& unwrap_or(const OK& default_val) const& { return is_ok ? ok_val : default_val; }
+
+    template <typename Func>
+    auto map(Func&& func) && -> Result<std::invoke_result_t<Func, OK>, ERR> {
+        if (is_ok) return std::invoke(std::forward<Func>(func), std::move(ok_val));
+        return std::move(err_val);
+    }
+
+    template <typename Func>
+    auto and_then(Func&& func) && -> std::invoke_result_t<Func, OK> {
+        static_assert(
+            std::is_same_v<ERR, typename std::invoke_result_t<Func, OK>::ERR>,
+            "Error types must match"
+        );
+        if (is_ok) return std::invoke(std::forward<Func>(func), std::move(ok_val));
+        return std::move(err_val);
+    }
+
+    template <typename U>
+    OK value_or(U&& default_val) const& {
+        return is_ok ? ok_val : static_cast<OK>(std::forward<U>(default_val));
+    }
+
+    template <std::invocable Func>
+        requires std::invocable<Func, ERR>
+    auto map_err(Func&& func) && {
+        return is_ok ? std::move(*this) : func(std::move(err_val));
+    }
+
+    /// low level utility to get the current value of a Result as the raw type it is
+    auto _get_value() { return is_ok ? ok_val : err_val; }
+
+    explicit operator bool() const noexcept { return is_ok; }
+};
 
 // experimental partial application implementation, since it is so big, it might be moved to a
 // functional package if finished and in a working state

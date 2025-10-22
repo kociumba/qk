@@ -1,6 +1,7 @@
 #include <qk/qk_utils.h>
 #include <catch2/catch_test_macros.hpp>
 #include <print>
+#include <ranges>
 
 TEST_CASE("Utils testing") {
     SECTION("defer") {
@@ -18,9 +19,38 @@ TEST_CASE("Utils testing") {
         using namespace qk::utils;
         stream<int> s;
 
-        s << 6 << 9;
-        REQUIRE(s.size() == 2);
+        s << 6 << 9 << std::ranges::views::iota(3, 6);
+        REQUIRE(s.size() == 5);
         std::println("stream: {}", s);
+    }
+
+    SECTION("run once") {
+        using namespace qk::utils;
+
+        int loop = 0;
+        int count = 0;
+        do {
+            once([&] { count++; });
+            loop++;
+        } while (loop < 10);
+
+        REQUIRE(loop > 1);
+        REQUIRE(count == 1);
+    }
+
+    SECTION("result types") {
+        using namespace qk::utils;
+
+        auto error_thrower = [] -> Result<int, std::string> { return "error"; };
+        auto ok_worker = [] -> Result<int, std::string> { return 69; };
+
+        auto r = error_thrower();
+        REQUIRE(!r);
+        std::println("got error: {}", r.unwrap_err());
+
+        r = ok_worker();
+        REQUIRE(r);
+        std::println("got value: {}", r.unwrap());
     }
 
     // SECTION("partial application") {
