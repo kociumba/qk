@@ -23,7 +23,7 @@ option(QK_ENABLE_TRAITS "include the various trait/impl like utilities in the bu
 option(QK_ENABLE_TRAITS_EXTRA "include extra traits that require reflection for their default implementations" ON)
 option(QK_ENABLE_EMBEDDING "include utilities for embedding/reading data in binary files" ON)
 option(QK_ENABLE_UTILS "include miscellaneous utilities that are too small to have their own modules" ON)
-option(QK_ENABLE_CLI "includes utilities for building clis" ON)
+option(QK_ENABLE_CLI "includes utilities for building clis" OFF) # unfinished module is disabled by default
 
 cmake_dependent_option(QK_NEEDS_REFLECTION "defines if qk needs reflection to work based on the enabled features"
         ON
