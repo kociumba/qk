@@ -179,15 +179,15 @@ struct stream {
         requires std::same_as<std::invoke_result_t<Func>, bool>
     void filter(Func&& func) {
         std::erase_if(data, [&](const T& item) { return !func(item); });
-        this.compact();
+        this->compact();
     }
 
     template <std::invocable Func>
     auto map(Func&& func) {
-        using Res = std::invoke_result_t<Func, decltype(*this.begin())>;
+        using Res = std::invoke_result_t<Func, decltype(this->begin())>;
         stream<Res> result;
-        result.reserve(this.size());
-        for (auto&& x : this) {
+        result.reserve(this->size());
+        for (auto&& x : *this) {
             result << func(x);
         }
 
