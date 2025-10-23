@@ -195,6 +195,39 @@ struct stream {
     }
 };
 
+struct SourceLocationEqual {
+    bool operator()(
+        const std::source_location& lhs, const std::source_location& rhs
+    ) const noexcept {
+        if (std::string_view(lhs.file_name()) != std::string_view(rhs.file_name())) return false;
+
+        if (lhs.line() != rhs.line()) return false;
+        if (lhs.column() != rhs.column()) return false;
+
+        if (std::string_view(lhs.function_name()) != std::string_view(rhs.function_name()))
+            return false;
+
+        return true;
+    }
+};
+
+struct SourceLocationHash {
+    std::size_t operator()(const std::source_location& loc) const noexcept {
+        std::size_t seed = std::hash<std::string_view>{}(std::string_view{loc.file_name()});
+
+        seed ^= std::hash<std::uint_least32_t>{}(loc.line()) + 1469598103934665603ULL +
+                (seed << 6) + (seed >> 2);
+
+        seed ^= std::hash<std::uint_least32_t>{}(loc.column()) + 1469598103934665603ULL +
+                (seed << 6) + (seed >> 2);
+
+        seed ^= std::hash<std::string_view>{}(std::string_view{loc.function_name()}) +
+                1469598103934665603ULL + (seed << 6) + (seed >> 2);
+
+        return seed;
+    }
+};
+
 /// runs a provided invocable only once per source location
 ///
 /// it is recommended to only use no argument and return lambdas here, since the static storage
@@ -205,17 +238,18 @@ struct stream {
 /// scenario as a mechanism to trigger actions only once is a very bad idea
 template <std::invocable Func>
 void once(Func&& func, std::source_location loc = std::source_location::current()) {
-    static std::unordered_set<std::string> registry;
+    static std::unordered_set<std::source_location, SourceLocationHash, SourceLocationEqual>
+        registry;
     static std::mutex mu;
 
-    std::stringstream ss;
-    ss << loc.file_name() << loc.line() << loc.column();
-    const auto id = ss.str();
+    // std::stringstream ss;
+    // ss << loc.file_name() << loc.line() << loc.column();
+    // const auto id = ss.str();
 
     {
         std::lock_guard l(mu);
-        if (!registry.contains(id)) {
-            registry.insert(id);
+        if (!registry.contains(loc)) {
+            registry.insert(loc);
             func();
         }
     }
