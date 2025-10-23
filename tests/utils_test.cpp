@@ -42,7 +42,7 @@ TEST_CASE("Utils testing") {
         using namespace qk::utils;
 
         auto error_thrower = [] -> Result<int, std::string> { return "error"; };
-        auto ok_worker = [] -> Result<int, std::string> { return ok(69); };
+        auto ok_worker = [] -> Result<int, std::string> { return 69; };
 
         auto r = error_thrower();
         REQUIRE(!r);
@@ -51,8 +51,6 @@ TEST_CASE("Utils testing") {
         r = ok_worker();
         REQUIRE(r);
         std::println("got value: {}", r.unwrap());
-
-        std::println("raw value: {}", *(int*)r._get_value());
     }
 
     // SECTION("partial application") {

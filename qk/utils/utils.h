@@ -30,9 +30,6 @@
 #pragma message("QK_ALWAYS_ASSERT will not be able to trigger a debug trap on this compiler")
 #endif
 
-/// simple always assert, used internally
-///
-/// can be used externally to achieve an assert that is not disabled in release builds
 #define QK_ALWAYS_ASSERT(expr)                                                              \
     do {                                                                                    \
         if (!(expr)) {                                                                      \
@@ -83,13 +80,8 @@ struct QK_API ScopeGuard {
 
 /// generic stream type, thin wrapper around a std::vector to simplify stream like operations
 ///
-/// the implementation is optimized to introduce as little overhead over using std::vector as
+/// the implementation is optimized to introduces as little overhead over using std::vector as
 /// possible
-///
-/// a stream can also accept ranges, and the last element can be popped off using --
-///
-/// stream also implicitly converts to T*, this is done to simplify using stream in place of classic
-/// array operations
 template <typename T>
 struct stream {
     std::vector<T> data;
@@ -196,13 +188,6 @@ struct stream {
 };
 
 /// runs a provided invocable only once per source location
-///
-/// it is recommended to only use no argument and return lambdas here, since the static storage
-/// will be duplicated for each invokable type passed to once in a program
-///
-/// @note
-/// while this function is thread safe and guarded with a mutex, using it in a multithreaded
-/// scenario as a mechanism to trigger actions only once is a very bad idea
 template <std::invocable Func>
 void once(Func&& func, std::source_location loc = std::source_location::current()) {
     static std::unordered_set<std::string> registry;
@@ -221,40 +206,7 @@ void once(Func&& func, std::source_location loc = std::source_location::current(
     }
 }
 
-template <typename T>
-struct Ok {
-    T value;
-    explicit Ok(T&& val) : value(std::forward<T>(val)) {}
-};
-
-template <typename T>
-struct Err {
-    T value;
-    explicit Err(T&& val) : value(std::forward<T>(val)) {}
-};
-
-template <typename T>
-Ok<std::decay_t<T>> ok(T&& value) {
-    return Ok<std::decay_t<T>>{std::forward<T>(value)};
-}
-
-template <typename T>
-Err<std::decay_t<T>> err(T&& value) {
-    return Err<std::decay_t<T>>{std::forward<T>(value)};
-}
-
 /// a rust style result, prioritising usage ergonomics, since that is the downfall of rusts result
-///
-/// a result of <OK, ERR> can be implicitly constructed from those types, example:
-///     @code
-///     Result<int, std::string> func() { return "error string"; }
-///     @endcode
-///
-/// and can be statically cast to OK or ERR based on the held value, example:
-///     @code
-///     auto r = func();
-///     if (!r) error_handler(static_cast<std::string>(r));
-///     @endcode
 template <typename OK, typename ERR>
 struct Result {
     union {
@@ -269,22 +221,6 @@ struct Result {
         } else {
             err_val.~ERR();
         }
-    }
-
-    template <typename T>
-    Result(Ok<T>&& ok) {
-        static_assert(std::is_constructible_v<OK, T>, "Ok value must be constructible to OK type");
-        std::construct_at(&ok_val, std::forward<T>(ok.value));
-        is_ok = true;
-    }
-
-    template <typename T>
-    Result(Err<T>&& err) {
-        static_assert(
-            std::is_constructible_v<ERR, T>, "Err value must be constructible to ERR type"
-        );
-        std::construct_at(&err_val, std::forward<T>(err.value));
-        is_ok = false;
     }
 
     Result(const OK& ok) : ok_val(ok), is_ok(true) {}
@@ -442,9 +378,7 @@ struct Result {
     }
 
     /// low level utility to get the current value of a Result as the raw type it is
-    void* _get_value() {
-        return is_ok ? static_cast<void*>(&ok_val) : static_cast<void*>(&err_val);
-    }
+    auto _get_value() { return is_ok ? ok_val : err_val; }
 
     explicit operator bool() const noexcept { return is_ok; }
 };
