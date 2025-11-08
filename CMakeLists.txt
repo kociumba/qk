@@ -23,6 +23,7 @@ option(QK_ENABLE_TRAITS "include the various trait/impl like utilities in the bu
 option(QK_ENABLE_TRAITS_EXTRA "include extra traits that require reflection for their default implementations" ON)
 option(QK_ENABLE_EMBEDDING "include utilities for embedding/reading data in binary files" ON)
 option(QK_ENABLE_UTILS "include miscellaneous utilities that are too small to have their own modules" ON)
+option(QK_ENABLE_MATH "include various math utilities in the built lib" ON)
 option(QK_ENABLE_CLI "includes utilities for building clis" OFF) # unfinished module is disabled by default
 
 cmake_dependent_option(QK_NEEDS_REFLECTION "defines if qk needs reflection to work based on the enabled features"
@@ -75,6 +76,10 @@ set(QK_SOURCES
         qk/utils/utils.h
         qk/cli/cli.cpp
         qk/cli/cli.h
+        qk/math/vec.h
+        qk/math/math.h
+        qk/utils/incrementer.h
+        qk/utils/utils_globals.cpp
 )
 
 if (QK_SHARED_LIB OR BUILD_SHARED_LIBS)
@@ -324,6 +329,11 @@ endif ()
 if (QK_ENABLE_CLI)
     target_compile_definitions(qk PUBLIC QK_CLI)
     qk_add_test_source(tests/cli_test.cpp)
+endif ()
+
+if (QK_ENABLE_MATH)
+    target_compile_definitions(qk PUBLIC QK_MATH)
+    #    qk_add_test_source(tests/math_test.cpp)
 endif ()
 
 # examples

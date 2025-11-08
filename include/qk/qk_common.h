@@ -39,4 +39,8 @@
 #include "qk_cli.h"
 #endif
 
+#ifdef QK_MATH
+#include "qk_math.h"
+#endif
+
 #endif  // COMMON_H

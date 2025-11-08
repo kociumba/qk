@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "../api.h"
+#include "incrementer.h"
 
 #if defined(_MSC_VER)
 #define DEBUG_BREAK() __debugbreak()
